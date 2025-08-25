@@ -9,31 +9,21 @@ import json
 import traceback
 from enum import Enum
 from upstash_redis import Redis
-import redis
 
 app = Flask(__name__)
 
 # Environment variables
 wa_token = os.environ.get("WA_TOKEN")
 phone_id = os.environ.get("PHONE_ID")
-gen_api = os.environ.get("GEN_API")
-owner_phone = os.environ.get("OWNER_PHONE")
 redis_url = os.environ.get("REDIS_URL")
-AGENT_NUMBERS = ["+263785019494"]
+owner_phone = os.environ.get("OWNER_PHONE")
+AGENT_NUMBERS = [owner_phone] if owner_phone else []
 
 # Redis client setup
 redis_client = Redis(
     url=os.environ.get('UPSTASH_REDIS_URL'),
     token=os.environ.get('UPSTASH_REDIS_TOKEN')
 )
-
-# Global variables removed - each conversation will have its own agent and conversation ID
-
-
-required_vars = ['WA_TOKEN', 'PHONE_ID', 'UPSTASH_REDIS_URL', 'UPSTASH_REDIS_TOKEN']
-missing_vars = [var for var in required_vars if not os.getenv(var)]
-if missing_vars:
-    raise RuntimeError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 # Test connection
 try:
@@ -46,46 +36,75 @@ except Exception as e:
 logging.basicConfig(level=logging.INFO)
 
 class MainMenuOptions(Enum):
-    ABOUT = "Learn about Contessasoft"
-    SERVICES = "Our Services"
-    QUOTE = "Request a Quote"
-    SUPPORT = "Talk to Support"
+    CAKES = "View Cake Options"
+    CUPCAKES = "Cupcakes"
+    PLACE_ORDER = "Place an Order"
+    PRICING = "Pricing Information"
     CONTACT = "Contact Us"
+    AGENT = "Speak to an Agent"
 
-class AboutOptions(Enum):
-    PORTFOLIO = "View our portfolio"
-    PROFILE = "Download company profile"
+class CakeTypeOptions(Enum):
+    FRESH_CREAM = "Fresh Cream Cakes"
+    FRUIT = "Fruit Cakes"
+    PLASTIC_ICING = "Plastic Icing Cakes"
     BACK = "Back to main menu"
 
-class ServiceOptions(Enum):
-    DOMAIN = "Domain Registration"
-    WEBSITE = "Website Development"
-    MOBILE = "Mobile App Development"
-    CHATBOT = "WhatsApp Chatbots"
-    PAYMENTS = "Payment Integrations"
-    AI = "AI and Automation"
-    DASHBOARDS = "Custom Dashboards"
-    OTHER = "Other"
+class FreshCreamOptions(Enum):
+    CAKE_FAIRY = "Cake Fairy Cake - $20"
+    DOUBLE_DELITE = "Double Delite (2 flavours) - +$5"
+    TRIPLE_DELITE = "Triple Delite (3 flavours) - +$10"
+    SMALL = "Small (6 inch) - $30"
+    LARGE = "Large (8 inch 3 layers or 7 inch 4 layers) - $40"
+    LARGE_10 = "Large (10 inch 2 layers) - $60"
+    XL = "Extra Large (10 inch 3 layers) - $80"
+    EXTRA_TALL = "Extra Tall Cake (7 inch or 8 inch) - $65"
+    BACK = "Back to cake types"
 
-class ChatbotOptions(Enum):
-    QUOTE = "Request a quote"
-    SAMPLE = "View sample chatbot"
-    BACK = "Back to services"
+class TierCakesOptions(Enum):
+    TWO_TIER = "2 Tier Cakes - Fresh Cream"
+    THREE_TIER = "3 Tier Cakes - Fresh Cream"
+    BACK = "Back to cake types"
 
-class QuoteOptions(Enum):
-    CALLBACK = "Yes, call me"
-    NO_CALLBACK = "No, just send the quote"
-    BACK = "Back to main menu"
+class TwoTierOptions(Enum):
+    SIZE_4_6 = "4 inch + 6 inch - $60"
+    SIZE_5_7 = "5 inch + 7 inch - $80"
+    SIZE_6_8 = "6 inch + 8 inch - $110"
+    SIZE_7_9 = "7 inch + 9 inch - $140"
+    SIZE_8_10 = "8 inch + 10 inch - $170"
+    FONDANT = "Fondant Additional - $20"
+    GANACHE = "Ganache Additional - $10"
+    SMBC = "SMBC Additional - $15"
+    BACK = "Back to tier options"
 
-class SupportOptions(Enum):
-    TECH = "Technical support"
-    BILLING = "Payment or billing help"
-    GENERAL = "General enquiry"
+class ThreeTierOptions(Enum):
+    SIZE_4_6_8 = "4 inch + 6 inch + 8 inch - $140"
+    SIZE_5_7_9 = "5 inch + 7 inch + 9 inch - $170"
+    SIZE_6_8_10 = "6 inch + 8 inch + 10 inch - $210"
+    FONDANT = "Fondant Additional - $20"
+    GANACHE = "Ganache Additional - $10"
+    SMBC = "SMBC Additional - $15"
+    BACK = "Back to tier options"
+
+class FruitCakeOptions(Enum):
+    SIZE_6 = "6 inch - $40"
+    SIZE_8 = "8 inch - $70"
+    BACK = "Back to cake types"
+
+class PlasticIcingOptions(Enum):
+    SMALL = "Small (6 inch) - $40"
+    MEDIUM = "Medium (8 inch) - $50"
+    LARGE = "Large (10 inch 2 layers) - $70"
+    XL = "Extra Large (10 inch 3 layers) - $100"
+    BACK = "Back to cake types"
+
+class OrderOptions(Enum):
+    NEW_ORDER = "Start New Order"
+    EXISTING_ORDER = "Check Existing Order"
     BACK = "Back to main menu"
 
 class ContactOptions(Enum):
     CALLBACK = "Request a call back"
-    AGENT = "Speak to an agent"
+    DIRECT = "Direct contact information"
     BACK = "Back to main menu"
 
 class User:
@@ -93,32 +112,65 @@ class User:
         self.name = name
         self.phone = phone
         self.email = None
-        self.service_type = None
-        self.project_description = None
+        self.cake_type = None
+        self.cake_size = None
+        self.flavor = None
+        self.filling = None
+        self.icing = None
+        self.shape = None
+        self.theme = None
+        self.due_date = None
+        self.due_time = None
+        self.message = None
+        self.colors = None
+        self.special_requests = None
+        self.referral_source = None
         self.callback_requested = False
-        self.support_type = None
 
     def to_dict(self):
         return {
             "name": self.name,
             "phone": self.phone,
             "email": self.email,
-            "service_type": self.service_type.value if self.service_type else None,
-            "project_description": self.project_description,
-            "callback_requested": self.callback_requested,
-            "support_type": self.support_type.value if self.support_type else None
+            "cake_type": self.cake_type.value if self.cake_type else None,
+            "cake_size": self.cake_size,
+            "flavor": self.flavor,
+            "filling": self.filling,
+            "icing": self.icing,
+            "shape": self.shape,
+            "theme": self.theme,
+            "due_date": self.due_date,
+            "due_time": self.due_time,
+            "message": self.message,
+            "colors": self.colors,
+            "special_requests": self.special_requests,
+            "referral_source": self.referral_source,
+            "callback_requested": self.callback_requested
         }
 
     @classmethod
     def from_dict(cls, data):
         user = cls(data["name"], data["phone"])
         user.email = data.get("email")
-        if data.get("service_type"):
-            user.service_type = ServiceOptions(data["service_type"])
-        user.project_description = data.get("project_description")
+        if data.get("cake_type"):
+            # Map cake type string back to enum
+            for option in CakeTypeOptions:
+                if data["cake_type"] == option.value:
+                    user.cake_type = option
+                    break
+        user.cake_size = data.get("cake_size")
+        user.flavor = data.get("flavor")
+        user.filling = data.get("filling")
+        user.icing = data.get("icing")
+        user.shape = data.get("shape")
+        user.theme = data.get("theme")
+        user.due_date = data.get("due_date")
+        user.due_time = data.get("due_time")
+        user.message = data.get("message")
+        user.colors = data.get("colors")
+        user.special_requests = data.get("special_requests")
+        user.referral_source = data.get("referral_source")
         user.callback_requested = data.get("callback_requested", False)
-        if data.get("support_type"):
-            user.support_type = SupportOptions(data["support_type"])
         return user
 
 # Phone number normalization function
@@ -325,7 +377,6 @@ def send_button_message(text, buttons, recipient, phone_id):
         send_message(fallback_text, recipient, phone_id)
         return False
 
-
 def send_list_message(text, options, recipient, phone_id):
     url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
     headers = {
@@ -387,12 +438,11 @@ def send_list_message(text, options, recipient, phone_id):
         logging.error(f"Unexpected error sending list message: {str(e)}")
         return False
 
-
 # Handlers
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
-        "🌟 *Welcome to Contessasoft (Private) Limited!* 🌟\n\n"
-        "We build intelligent software solutions including websites, mobile apps, chatbots, and business systems.\n\n"
+        "🎂 *Welcome to Fresh Cream Cakes!* 🎂\n\n"
+        "We create delicious, beautifully decorated cakes for all occasions.\n\n"
         "Please choose an option to continue:"
     )
     
@@ -407,51 +457,6 @@ def handle_welcome(prompt, user_data, phone_id):
     update_user_state(user_data['sender'], {'step': 'main_menu'})
     return {'step': 'main_menu'}
 
-def handle_restart_confirmation(prompt, user_data, phone_id):
-    try:
-        text = (prompt or "").strip().lower()
-
-        # Initial entry or unrecognized input -> show Yes/No buttons
-        if text == "" or text in ["restart", "start", "menu"]:
-            send_button_message(
-                "Would you like to go back to main menu?",
-                [
-                    {"id": "restart_yes", "title": "Yes"},
-                    {"id": "restart_no", "title": "No"}
-                ],
-                user_data['sender'],
-                phone_id
-            )
-            update_user_state(user_data['sender'], {'step': 'restart_confirmation'})
-            return {'step': 'restart_confirmation'}
-
-        # Positive confirmation -> go to welcome flow
-        if text in ["yes", "y", "restart_yes", "ok", "sure", "yeah", "yep"]:
-            return handle_welcome("", user_data, phone_id)
-
-        # Negative confirmation -> send goodbye and reset to welcome state
-        if text in ["no", "n", "restart_no", "nope", "nah"]:
-            send_message("Have a good day!", user_data['sender'], phone_id)
-            update_user_state(user_data['sender'], {'step': 'welcome'})
-            return {'step': 'welcome'}
-
-        # Any other input -> re-send buttons
-        send_button_message(
-            "Please confirm: would you like to restart with the bot?",
-            [
-                {"id": "restart_yes", "title": "Yes"},
-                {"id": "restart_no", "title": "No"}
-            ],
-            user_data['sender'],
-            phone_id
-        )
-        return {'step': 'restart_confirmation'}
-
-    except Exception as e:
-        logging.error(f"Error in handle_restart_confirmation: {e}")
-        send_message("An error occurred. Returning to main menu.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
-
 def handle_main_menu(prompt, user_data, phone_id):
     try:
         selected_option = None
@@ -461,83 +466,64 @@ def handle_main_menu(prompt, user_data, phone_id):
                 break
                 
         if not selected_option:
-            send_message("Fae selection. Please choose an option from the list.", user_data['sender'], phone_id)
+            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
             return {'step': 'main_menu'}
         
-        if selected_option == MainMenuOptions.ABOUT:
-            about_msg = (
-                "Contessasoft is a Zimbabwe-based software company established in 2022.\n"
-                "We develop custom systems for businesses in finance, education, logistics, retail, and other sectors.\n\n"
-                "Would you like to:"
-            )
-            
-            about_options = [option.value for option in AboutOptions]
+        if selected_option == MainMenuOptions.CAKES:
+            cake_types_msg = "Please select the type of cake you're interested in:"
+            cake_options = [option.value for option in CakeTypeOptions]
             send_list_message(
-                about_msg,
-                about_options,
+                cake_types_msg,
+                cake_options,
                 user_data['sender'],
                 phone_id
             )
-            update_user_state(user_data['sender'], {'step': 'about_menu'})
-            return {'step': 'about_menu'}
+            update_user_state(user_data['sender'], {'step': 'cake_types_menu'})
+            return {'step': 'cake_types_menu'}
             
-        elif selected_option == MainMenuOptions.SERVICES:
-            services_msg = (
-                "🔧 *Our Services* 🔧\n\n"
-                "We offer complete digital solutions:\n"
-                "Select a service to learn more:"
-            )
-            service_options = [option.value for option in ServiceOptions]
-            
-            # Ensure options aren't too long for WhatsApp limits
-            service_options = [opt[:72] for opt in service_options]
-            
-            send_list_message(
-                services_msg,
-                service_options,
-                user_data['sender'],
-                phone_id
-            )
-            update_user_state(user_data['sender'], {'step': 'services_menu'})
-            return {'step': 'services_menu'}
-            
-            
-        elif selected_option == MainMenuOptions.QUOTE:
+        elif selected_option == MainMenuOptions.CUPCAKES:
             send_message(
-                "To help us prepare a quote, please provide your full name.",
+                "Our cupcakes start at $15 per dozen. Please provide more details about your cupcake needs:\n"
+                "- Quantity\n"
+                "- Flavors\n"
+                "- Decorations\n"
+                "- Any special requests",
                 user_data['sender'],
                 phone_id
             )
-            # Initialize empty user object
-            user = User(name="", phone=user_data['sender'])
-            update_user_state(user_data['sender'], {
-                'step': 'get_quote_info',
-                'user': user.to_dict(),
-                'field': 'name'  # First field to collect
-            })
-            return {'step': 'get_quote_info'}
+            update_user_state(user_data['sender'], {'step': 'cupcake_inquiry'})
+            return {'step': 'cupcake_inquiry'}
             
-        elif selected_option == MainMenuOptions.SUPPORT:
-            support_msg = "Please select the type of support you need:"
-            support_options = [option.value for option in SupportOptions]
+        elif selected_option == MainMenuOptions.PLACE_ORDER:
+            order_msg = "Would you like to start a new order or check an existing order?"
+            order_options = [option.value for option in OrderOptions]
             send_list_message(
-                support_msg,
-                support_options,
+                order_msg,
+                order_options,
                 user_data['sender'],
                 phone_id
             )
-            update_user_state(user_data['sender'], {'step': 'support_menu'})
-            return {'step': 'support_menu'}
+            update_user_state(user_data['sender'], {'step': 'order_menu'})
+            return {'step': 'order_menu'}
+            
+        elif selected_option == MainMenuOptions.PRICING:
+            pricing_msg = (
+                "💰 *Pricing Information* 💰\n\n"
+                "Our cakes range from $20 to $210 depending on size, type, and decorations.\n\n"
+                "Please select a cake type to see detailed pricing:"
+            )
+            cake_options = [option.value for option in CakeTypeOptions if option != CakeTypeOptions.BACK]
+            send_list_message(
+                pricing_msg,
+                cake_options,
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {'step': 'pricing_menu'})
+            return {'step': 'pricing_menu'}
             
         elif selected_option == MainMenuOptions.CONTACT:
-            contact_msg = (
-                "You can reach Contessasoft through the following:\n\n"
-                "Address: 115 ED Mnangagwa Road, Highlands, Harare, Zimbabwe\n"
-                "WhatsApp: +263 242 498954\n"
-                "Email: sales@contessasoft.co.zw\n\n"
-                "Would you like to:"
-            )
-            
+            contact_msg = "How would you like to contact us?"
             contact_options = [option.value for option in ContactOptions]
             send_list_message(
                 contact_msg,
@@ -548,337 +534,360 @@ def handle_main_menu(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {'step': 'contact_menu'})
             return {'step': 'contact_menu'}
             
+        elif selected_option == MainMenuOptions.AGENT:
+            return human_agent("", user_data, phone_id)
+            
     except Exception as e:
         logging.error(f"Error in handle_main_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'welcome'}
 
-def handle_about_menu(prompt, user_data, phone_id):
+def handle_cake_types_menu(prompt, user_data, phone_id):
     try:
         selected_option = None
-        for option in AboutOptions:
+        for option in CakeTypeOptions:
             if prompt.lower() in option.value.lower():
                 selected_option = option
                 break
                 
         if not selected_option:
             send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
-            return {'step': 'about_menu'}
+            return {'step': 'cake_types_menu'}
             
-        if selected_option == AboutOptions.PORTFOLIO:
-            portfolio_msg = (
-                "Our portfolio includes:\n"
-                "- Banking systems\n"
-                "- School management systems\n"
-                "- E-commerce platforms\n"
-                "- Logistics tracking systems\n"
-                "- Custom business automation"
-            )
-            send_message(portfolio_msg, user_data['sender'], phone_id)
-            return handle_welcome("", user_data, phone_id)
-            
-        elif selected_option == AboutOptions.PROFILE:
-            send_message(
-                "You can download our company profile from: https://contessasoft.co.zw/profile.pdf\n\n"
-                "Would you like to request more information?",
+        if selected_option == CakeTypeOptions.FRESH_CREAM:
+            fresh_cream_msg = "Please select a Fresh Cream Cake option:"
+            fresh_cream_options = [option.value for option in FreshCreamOptions]
+            send_list_message(
+                fresh_cream_msg,
+                fresh_cream_options,
                 user_data['sender'],
                 phone_id
             )
-            update_user_state(user_data['sender'], {'step': 'request_more_info'})
-            return {'step': 'request_more_info'}
+            update_user_state(user_data['sender'], {'step': 'fresh_cream_menu'})
+            return {'step': 'fresh_cream_menu'}
             
-        elif selected_option == AboutOptions.BACK:
+        elif selected_option == CakeTypeOptions.FRUIT:
+            fruit_msg = "Please select a Fruit Cake option:"
+            fruit_options = [option.value for option in FruitCakeOptions]
+            send_list_message(
+                fruit_msg,
+                fruit_options,
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {'step': 'fruit_cake_menu'})
+            return {'step': 'fruit_cake_menu'}
+            
+        elif selected_option == CakeTypeOptions.PLASTIC_ICING:
+            plastic_msg = "Please select a Plastic Icing Cake option:"
+            plastic_options = [option.value for option in PlasticIcingOptions]
+            send_list_message(
+                plastic_msg,
+                plastic_options,
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {'step': 'plastic_icing_menu'})
+            return {'step': 'plastic_icing_menu'}
+            
+        elif selected_option == CakeTypeOptions.BACK:
             return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
-        logging.error(f"Error in handle_about_menu: {e}")
+        logging.error(f"Error in handle_cake_types_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'welcome'}
 
-def handle_services_menu(prompt, user_data, phone_id):
+def handle_fresh_cream_menu(prompt, user_data, phone_id):
     try:
-        # Clean and normalize input
-        clean_input = prompt.strip().lower()
-        
-        # Improved matching logic
         selected_option = None
-        best_match_score = 0
-        
-        for option in ServiceOptions:
-            option_text = option.value.lower()
-            
-            # Calculate match score (exact match gets highest priority)
-            if clean_input == option_text:
+        for option in FreshCreamOptions:
+            if prompt.lower() in option.value.lower():
                 selected_option = option
                 break
                 
-            # Check for partial matches
-            match_score = 0
-            if clean_input in option_text:
-                match_score = len(clean_input) / len(option_text)
-            elif any(word in option_text for word in clean_input.split()):
-                match_score = 0.5  # Partial word match
-                
-            if match_score > best_match_score:
-                best_match_score = match_score
-                selected_option = option
-
         if not selected_option:
-            error_msg = "🚫 Please select a valid service option:"
-            service_options = [opt.value for opt in ServiceOptions]
+            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
+            return {'step': 'fresh_cream_menu'}
             
-            if not send_list_message(error_msg, service_options, user_data['sender'], phone_id):
-                send_message(
-                    "Please reply with:\n" + "\n".join(f"- {opt.value}" for opt in ServiceOptions),
-                    user_data['sender'],
-                    phone_id
-                )
-            return {'step': 'services_menu'}
-
-        # Handle the selected service
-        service_info = {
-            ServiceOptions.DOMAIN: (
-                "🌐 *Domain & Hosting Services*\n\n"
-                "• Domain registration (.co.zw, .com, etc.)\n"
-                "• Reliable web hosting with 99.9% uptime\n"
-                "• Professional email hosting\n"
-                "• SSL certificates for security\n"
-                "• DNS management\n"
-                "• Website migration assistance"
-            ),
-            ServiceOptions.WEBSITE: (
-                "🖥️ *Website Development*\n\n"
-                "• Custom business websites\n"
-                "• E-commerce stores with payment integration\n"
-                "• Content Management Systems (CMS)\n"
-                "• Web application development\n"
-                "• SEO optimization\n"
-                "• Ongoing maintenance packages"
-            ),
-            ServiceOptions.MOBILE: (
-                "📱 *Mobile App Development*\n\n"
-                "• Native iOS and Android apps\n"
-                "• Cross-platform hybrid apps\n"
-                "• App UI/UX design\n"
-                "• API integration\n"
-                "• App Store and Play Store deployment\n"
-                "• Post-launch support"
-            ),
-            ServiceOptions.CHATBOT: (
-                "🤖 *WhatsApp Chatbots*\n\n"
-                "• Automated customer service\n"
-                "• Bill payment solutions (ZESA, DStv, etc.)\n"
-                "• Order processing systems\n"
-                "• KYC and registration flows\n"
-                "• FAQ and support automation\n"
-                "• Integration with business systems"
-            ),
-            ServiceOptions.PAYMENTS: (
-                "💳 *Payment Integrations*\n\n"
-                "• Ecocash/OneMoney/ZimSwitch\n"
-                "• VISA/Mastercard gateways\n"
-                "• PayPal and international payments\n"
-                "• Custom payment solutions\n"
-                "• PCI-DSS compliant setups\n"
-                "• Reconciliation reporting"
-            ),
-            ServiceOptions.AI: (
-                "🧠 *AI & Automation*\n\n"
-                "• Intelligent chatbots\n"
-                "• Document processing and OCR\n"
-                "• Predictive analytics\n"
-                "• Process automation\n"
-                "• Machine learning models\n"
-                "• Data extraction and analysis"
-            ),
-            ServiceOptions.DASHBOARDS: (
-                "📊 *Business Dashboards*\n\n"
-                "• Real-time business analytics\n"
-                "• Custom reporting tools\n"
-                "• Data visualization\n"
-                "• KPI tracking\n"
-                "• Executive dashboards\n"
-                "• Automated report generation"
-            ),
-            ServiceOptions.OTHER: (
-                "✨ *Custom Solutions*\n\n"
-                "We develop tailored software for:\n"
-                "• Inventory management\n"
-                "• School administration\n"
-                "• Healthcare systems\n"
-                "• Logistics tracking\n"
-                "• Financial services\n"
-                "• And other business needs"
-            )
-        }.get(selected_option, "ℹ️ Service information coming soon")
-
-        # Store the selected service for quote reference
-        update_user_state(user_data['sender'], {
-            'step': 'service_detail',
-            'selected_service': selected_option.name,
-            'service_description': selected_option.value
-        })
-
-        # Prepare the buttons
-        buttons = [
-            {"type": "reply", "reply": {"id": "quote_btn", "title": "💬 Request Quote"}},
-            {"type": "reply", "reply": {"id": "back_btn", "title": "🔙 Back to Services"}}
-        ]
-
-        # Send interactive button message
-        url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
-        headers = {
-            'Authorization': f'Bearer {wa_token}',
-            'Content-Type': 'application/json'
-        }
-        
-        data = {
-            "messaging_product": "whatsapp",
-            "to": user_data['sender'],
-            "type": "interactive",
-            "interactive": {
-                "type": "button",
-                "body": {"text": service_info},
-                "action": {"buttons": buttons}
-            }
-        }
-
-        try:
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
+        if selected_option == FreshCreamOptions.BACK:
+            return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
             
-            # Update state to handle button responses
-            update_user_state(user_data['sender'], {
-                'step': 'service_detail',
-                'selected_service': selected_option.name,
-                'service_description': selected_option.value,
-                'awaiting_button_response': True
-            })
-            
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Failed to send button message: {e}")
-            # Fallback to simple message
-            send_message(
-                f"{service_info}\n\nReply with:\n1. 'Quote' for pricing\n2. 'Back' to return",
-                user_data['sender'],
-                phone_id
-            )
-            
-        return {
-            'step': 'service_detail',
-            'selected_service': selected_option.name
-        }
-            
-    except Exception as e:
-        logging.error(f"Service menu error: {str(e)}\n{traceback.format_exc()}")
-        send_message("⚠️ Please try selecting again or type 'menu'", user_data['sender'], phone_id)
-        return {'step': 'services_menu'}
-
-
-def handle_service_detail(prompt, user_data, phone_id):
-    try:
-        # Clean the input and check for button responses
-        clean_input = prompt.strip().lower()
-        
-        # Handle "Request Quote" button or text
-        if "quote" in clean_input or "request quote" in clean_input or "💬" in prompt:
-            # Initialize user object for quote collection
-            user = User(name="", phone=user_data['sender'])
-            update_user_state(user_data['sender'], {
-                'step': 'get_quote_info',
-                'user': user.to_dict(),
-                'field': 'name',  # First field to collect
-                'selected_service': user_data.get('selected_service'),
-                'service_description': user_data.get('service_description')
-            })
-            send_message("To help us prepare a quote, please provide your full name:", user_data['sender'], phone_id)
-            return {
-                'step': 'get_quote_info',
-                'user': user.to_dict(),
-                'field': 'name'
-            }
-            
-        # Handle "Back to Services" button or text
-        elif "back" in clean_input or "services" in clean_input or "🔙" in prompt:
-            services_msg = (
-                "🔧 *Our Services* 🔧\n\n"
-                "We offer complete digital solutions:\n"
-                "Select a service to learn more:"
-            )
-            service_options = [option.value for option in ServiceOptions]
-            send_list_message(
-                services_msg,
-                service_options,
-                user_data['sender'],
-                phone_id
-            )
-            update_user_state(user_data['sender'], {'step': 'services_menu'})
-            return {'step': 'services_menu'}
-            
-        # If the input doesn't match any expected option
-        else:
-            # Resend the service info with buttons
-            service_info = (
-                f"ℹ️ *{user_data.get('service_description', 'Selected Service')}*\n\n"
-                "Please choose an option:"
-            )
+        # For tier cakes, show tier options
+        if selected_option in [FreshCreamOptions.SMALL, FreshCreamOptions.LARGE, 
+                              FreshCreamOptions.LARGE_10, FreshCreamOptions.XL, 
+                              FreshCreamOptions.EXTRA_TALL]:
+            tier_msg = "Would you like to see tier cake options for this size?"
             send_button_message(
-                service_info,
+                tier_msg,
                 [
-                    {"id": "quote_btn", "title": "💬 Request Quote"},
-                    {"id": "back_btn", "title": "🔙 Back to Services"}
+                    {"id": "tier_yes", "title": "Yes, show tier options"},
+                    {"id": "tier_no", "title": "No, continue with single tier"}
                 ],
                 user_data['sender'],
                 phone_id
             )
-            return {'step': 'service_detail'}
+            update_user_state(user_data['sender'], {
+                'step': 'tier_decision',
+                'selected_option': selected_option.value
+            })
+            return {'step': 'tier_decision'}
+            
+        # For other options, just show the selection
+        send_message(
+            f"You selected: {selected_option.value}\n\n"
+            "Would you like to place an order for this item?",
+            user_data['sender'],
+            phone_id
+        )
+        update_user_state(user_data['sender'], {
+            'step': 'order_decision',
+            'selected_option': selected_option.value
+        })
+        return {'step': 'order_decision'}
             
     except Exception as e:
-        logging.error(f"Error in handle_service_detail: {e}")
+        logging.error(f"Error in handle_fresh_cream_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'services_menu'}
-        
+        return {'step': 'cake_types_menu'}
 
-def handle_chatbot_menu(prompt, user_data, phone_id):
+def handle_tier_decision(prompt, user_data, phone_id):
+    try:
+        if "yes" in prompt.lower() or "tier_yes" in prompt:
+            tier_msg = "Please select tier cake options:"
+            tier_options = [option.value for option in TierCakesOptions]
+            send_list_message(
+                tier_msg,
+                tier_options,
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {'step': 'tier_cakes_menu'})
+            return {'step': 'tier_cakes_menu'}
+        else:
+            send_message(
+                f"You selected: {user_data.get('selected_option', 'this item')}\n\n"
+                "Would you like to place an order?",
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {
+                'step': 'order_decision',
+                'selected_option': user_data.get('selected_option')
+            })
+            return {'step': 'order_decision'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_tier_decision: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'fresh_cream_menu'}
+
+def handle_tier_cakes_menu(prompt, user_data, phone_id):
     try:
         selected_option = None
-        for option in ChatbotOptions:
+        for option in TierCakesOptions:
             if prompt.lower() in option.value.lower():
                 selected_option = option
                 break
                 
         if not selected_option:
             send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
-            return {'step': 'chatbot_menu'}
+            return {'step': 'tier_cakes_menu'}
             
-        if selected_option == ChatbotOptions.QUOTE:
-            send_message(
-                "To help us prepare a quote, please provide your full name.",
+        if selected_option == TierCakesOptions.BACK:
+            return handle_fresh_cream_menu("", user_data, phone_id)
+            
+        if selected_option == TierCakesOptions.TWO_TIER:
+            two_tier_msg = "Please select a 2-tier cake option:"
+            two_tier_options = [option.value for option in TwoTierOptions]
+            send_list_message(
+                two_tier_msg,
+                two_tier_options,
                 user_data['sender'],
                 phone_id
             )
-            update_user_state(user_data['sender'], {'step': 'get_chatbot_quote'})
-            return {'step': 'get_chatbot_quote'}
+            update_user_state(user_data['sender'], {'step': 'two_tier_menu'})
+            return {'step': 'two_tier_menu'}
             
-        elif selected_option == ChatbotOptions.SAMPLE:
-            send_message(
-                "You can view a sample chatbot at: https://wa.me/263242498954?text=sample\n\n"
-                "Would you like to request a quote for a similar solution?",
+        elif selected_option == TierCakesOptions.THREE_TIER:
+            three_tier_msg = "Please select a 3-tier cake option:"
+            three_tier_options = [option.value for option in ThreeTierOptions]
+            send_list_message(
+                three_tier_msg,
+                three_tier_options,
                 user_data['sender'],
                 phone_id
             )
-            update_user_state(user_data['sender'], {'step': 'get_quote_info'})
-            return {'step': 'get_quote_info'}
-            
-        elif selected_option == ChatbotOptions.BACK:
-            return handle_main_menu(MainMenuOptions.SERVICES.value, user_data, phone_id)
+            update_user_state(user_data['sender'], {'step': 'three_tier_menu'})
+            return {'step': 'three_tier_menu'}
             
     except Exception as e:
-        logging.error(f"Error in handle_chatbot_menu: {e}")
+        logging.error(f"Error in handle_tier_cakes_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
+        return {'step': 'tier_cakes_menu'}
 
-def handle_get_quote_info(prompt, user_data, phone_id):
+def handle_two_tier_menu(prompt, user_data, phone_id):
+    try:
+        selected_option = None
+        for option in TwoTierOptions:
+            if prompt.lower() in option.value.lower():
+                selected_option = option
+                break
+                
+        if not selected_option:
+            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
+            return {'step': 'two_tier_menu'}
+            
+        if selected_option == TwoTierOptions.BACK:
+            return handle_tier_cakes_menu("", user_data, phone_id)
+            
+        send_message(
+            f"You selected: {selected_option.value}\n\n"
+            "Would you like to place an order for this item?",
+            user_data['sender'],
+            phone_id
+        )
+        update_user_state(user_data['sender'], {
+            'step': 'order_decision',
+            'selected_option': selected_option.value
+        })
+        return {'step': 'order_decision'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_two_tier_menu: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'two_tier_menu'}
+
+def handle_three_tier_menu(prompt, user_data, phone_id):
+    try:
+        selected_option = None
+        for option in ThreeTierOptions:
+            if prompt.lower() in option.value.lower():
+                selected_option = option
+                break
+                
+        if not selected_option:
+            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
+            return {'step': 'three_tier_menu'}
+            
+        if selected_option == ThreeTierOptions.BACK:
+            return handle_tier_cakes_menu("", user_data, phone_id)
+            
+        send_message(
+            f"You selected: {selected_option.value}\n\n"
+            "Would you like to place an order for this item?",
+            user_data['sender'],
+            phone_id
+        )
+        update_user_state(user_data['sender'], {
+            'step': 'order_decision',
+            'selected_option': selected_option.value
+        })
+        return {'step': 'order_decision'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_three_tier_menu: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'three_tier_menu'}
+
+def handle_fruit_cake_menu(prompt, user_data, phone_id):
+    try:
+        selected_option = None
+        for option in FruitCakeOptions:
+            if prompt.lower() in option.value.lower():
+                selected_option = option
+                break
+                
+        if not selected_option:
+            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
+            return {'step': 'fruit_cake_menu'}
+            
+        if selected_option == FruitCakeOptions.BACK:
+            return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
+            
+        send_message(
+            f"You selected: {selected_option.value}\n\n"
+            "Would you like to place an order for this item?",
+            user_data['sender'],
+            phone_id
+        )
+        update_user_state(user_data['sender'], {
+            'step': 'order_decision',
+            'selected_option': selected_option.value
+        })
+        return {'step': 'order_decision'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_fruit_cake_menu: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'fruit_cake_menu'}
+
+def handle_plastic_icing_menu(prompt, user_data, phone_id):
+    try:
+        selected_option = None
+        for option in PlasticIcingOptions:
+            if prompt.lower() in option.value.lower():
+                selected_option = option
+                break
+                
+        if not selected_option:
+            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
+            return {'step': 'plastic_icing_menu'}
+            
+        if selected_option == PlasticIcingOptions.BACK:
+            return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
+            
+        send_message(
+            f"You selected: {selected_option.value}\n\n"
+            "Would you like to place an order for this item?",
+            user_data['sender'],
+            phone_id
+        )
+        update_user_state(user_data['sender'], {
+            'step': 'order_decision',
+            'selected_option': selected_option.value
+        })
+        return {'step': 'order_decision'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_plastic_icing_menu: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'plastic_icing_menu'}
+
+def handle_order_decision(prompt, user_data, phone_id):
+    try:
+        if "yes" in prompt.lower() or "order" in prompt.lower():
+            send_message(
+                "Great! Let's start your order. Please provide your full name:",
+                user_data['sender'],
+                phone_id
+            )
+            user = User(name="", phone=user_data['sender'])
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'name',
+                'selected_item': user_data.get('selected_option')
+            })
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'name'
+            }
+        else:
+            send_message(
+                "No problem! Is there anything else I can help you with?",
+                user_data['sender'],
+                phone_id
+            )
+            return handle_welcome("", user_data, phone_id)
+            
+    except Exception as e:
+        logging.error(f"Error in handle_order_decision: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def handle_get_order_info(prompt, user_data, phone_id):
     try:
         user = User.from_dict(user_data['user'])
         current_field = user_data.get('field')
@@ -886,219 +895,465 @@ def handle_get_quote_info(prompt, user_data, phone_id):
         if current_field == 'name':
             user.name = prompt
             update_user_state(user_data['sender'], {
-                'step': 'get_quote_info',
+                'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'email'
+                'field': 'contact',
+                'selected_item': user_data.get('selected_item')
             })
             send_message("Thank you. Please provide your email or WhatsApp number:", user_data['sender'], phone_id)
             return {
-                'step': 'get_quote_info',
+                'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'email'
+                'field': 'contact'
             }
             
-        elif current_field == 'email':
-            user.email = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_quote_info',
-                'user': user.to_dict(),
-                'field': 'service_type'
-            })
-            send_message("Please specify the type of service you need:", user_data['sender'], phone_id)
-            return {
-                'step': 'get_quote_info',
-                'user': user.to_dict(),
-                'field': 'service_type'
-            }
-            
-        elif current_field == 'service_type':
-            try:
-                user.service_type = ServiceOptions(prompt)
-            except ValueError:
-                user.service_type = ServiceOptions.OTHER
-            update_user_state(user_data['sender'], {
-                'step': 'get_quote_info',
-                'user': user.to_dict(),
-                'field': 'description'
-            })
-            send_message("Please provide a short description of your project:", user_data['sender'], phone_id)
-            return {
-                'step': 'get_quote_info',
-                'user': user.to_dict(),
-                'field': 'description'
-            }
-            
-        elif current_field == 'description':
-            user.project_description = prompt
-            quote_options = [option.value for option in QuoteOptions]
-            
-            send_list_message(
-                "Would you like a call back after submitting?",
-                quote_options,
-                user_data['sender'],
-                phone_id
-            )
-            
-            # Send info to admin
-            admin_msg = (
-                "📋 *New Quote Request*\n\n"
-                f"👤 Name: {user.name}\n"
-                f"📞 Phone: {user.phone}\n"
-                f"📧 Email: {user.email}\n"
-                f"🛠️ Service: {user.service_type.value if user.service_type else 'Other'}\n"
-                f"📝 Description: {user.project_description}"
-            )
-            send_message(admin_msg, owner_phone, phone_id)
-            
-            update_user_state(user_data['sender'], {
-                'step': 'quote_followup',
-                'user': user.to_dict()
-            })
-            return {
-                'step': 'quote_followup',
-                'user': user.to_dict()
-            }
-            
-             
-    except Exception as e:
-        logging.error(f"Error in handle_get_quote_info: {e}")
-        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
-        
-
-def handle_quote_followup(prompt, user_data, phone_id):
-    try:
-        selected_option = None
-        for option in QuoteOptions:
-            if prompt.lower() in option.value.lower():
-                selected_option = option
-                break
+        elif current_field == 'contact':
+            # Check if it's an email or phone number
+            if "@" in prompt:
+                user.email = prompt
+            else:
+                user.phone = prompt  # In case they provide a different number
                 
-        if not selected_option:
-            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'flavor',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What flavor would you like? (e.g., chocolate, vanilla, red velvet):", user_data['sender'], phone_id)
             return {
-                'step': 'quote_followup',
-                'user': user_data.get('user', {})
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'flavor'
             }
             
-        user = User.from_dict(user_data['user'])
-        
-        if selected_option == QuoteOptions.CALLBACK:
-            user.callback_requested = True
-            send_message(
-                "Thank you! Your request has been submitted. Our team will call you within 24 hours.\n\n"
-                "Reference: #" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=6)),
-                user_data['sender'],
-                phone_id
-            )
+        elif current_field == 'flavor':
+            user.flavor = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'filling',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What filling would you like? (e.g., cream, fruit, chocolate ganache):", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'filling'
+            }
             
-            # Notify admin about callback request
-            admin_msg = f"📞 Callback requested by {user.name} - {user.phone} for quote #{user.project_description[:10]}..."
-            send_message(admin_msg, owner_phone, phone_id)
+        elif current_field == 'filling':
+            user.filling = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'icing',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What type of icing would you like? (e.g., buttercream, fondant, ganache):", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'icing'
+            }
             
-        elif selected_option == QuoteOptions.NO_CALLBACK:
-            send_message(
-                "Thank you! Your request has been submitted. You'll receive the quote via WhatsApp/email within 24 hours.",
-                user_data['sender'],
-                phone_id
-            )
+        elif current_field == 'icing':
+            user.icing = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'shape',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What shape would you like? (e.g., round, square, heart, custom):", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'shape'
+            }
             
-        elif selected_option == QuoteOptions.BACK:
-            return handle_main_menu(MainMenuOptions.QUOTE.value, user_data, phone_id)
+        elif current_field == 'shape':
+            user.shape = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'theme',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What theme would you like? (e.g., birthday, wedding, anniversary):", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'theme'
+            }
             
-        return handle_welcome("", user_data, phone_id)
-        
-    except Exception as e:
-        logging.error(f"Error in handle_quote_followup: {e}")
-        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
+        elif current_field == 'theme':
+            user.theme = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'due_date',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("When do you need the cake? (Please provide date in DD/MM/YYYY format):", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'due_date'
+            }
+            
+        elif current_field == 'due_date':
+            user.due_date = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'due_time',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What time do you need the cake? (e.g., 2:00 PM):", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'due_time'
+            }
+            
+        elif current_field == 'due_time':
+            user.due_time = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'colors',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What colors would you like on the cake? (e.g., blue and white):", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'colors'
+            }
+            
+        elif current_field == 'colors':
+            user.colors = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'message',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What message would you like on the cake? (e.g., Happy Birthday!):", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'message'
+            }
+            
+        elif current_field == 'message':
+            user.message = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'referral',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("How did you hear about us? (e.g., Facebook, friend, Google):", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'referral'
+            }
+            
+        elif current_field == 'referral':
+            user.referral_source = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'special_requests',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("Any special requests or dietary requirements?", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'special_requests'
+            }
+            
+        elif current_field == 'special_requests':
+            user.special_requests = prompt
+            
+            # Order is complete, show summary
+            order_summary = f"""
+🎂 *ORDER SUMMARY* 🎂
 
-def handle_support_menu(prompt, user_data, phone_id):
-    try:
-        selected_option = None
-        for option in SupportOptions:
-            if prompt.lower() in option.value.lower():
-                selected_option = option
-                break
-                
-        if not selected_option:
-            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
-            return {'step': 'support_menu'}
+*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
+*Name:* {user.name}
+*Contact:* {user.email or user.phone}
+*Flavor:* {user.flavor}
+*Filling:* {user.filling}
+*Icing:* {user.icing}
+*Shape:* {user.shape}
+*Theme:* {user.theme}
+*Due Date:* {user.due_date}
+*Due Time:* {user.due_time}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Referral Source:* {user.referral_source}
+*Special Requests:* {user.special_requests}
+
+*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+
+Please confirm if this order is correct.
+            """
             
-        if selected_option == SupportOptions.BACK:
+            send_button_message(
+                order_summary,
+                [
+                    {"id": "confirm_yes", "title": "✅ Yes, confirm order"},
+                    {"id": "confirm_no", "title": "❌ No, edit order"}
+                ],
+                user_data['sender'],
+                phone_id
+            )
+            
+            update_user_state(user_data['sender'], {
+                'step': 'confirm_order',
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item')
+            })
+            return {
+                'step': 'confirm_order',
+                'user': user.to_dict()
+            }
+            
+    except Exception as e:
+        logging.error(f"Error in handle_get_order_info: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def handle_confirm_order(prompt, user_data, phone_id):
+    try:
+        if "yes" in prompt.lower() or "confirm_yes" in prompt:
+            user = User.from_dict(user_data['user'])
+            
+            # Generate order number
+            order_number = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            
+            # Save order to Redis
+            order_data = {
+                'order_number': order_number,
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item'),
+                'timestamp': datetime.now().isoformat(),
+                'status': 'pending'
+            }
+            
+            redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_data))  # 7 days expiration
+            
+            # Send confirmation to customer
+            confirmation_msg = f"""
+✅ *ORDER CONFIRMED* ✅
+
+*Order Number:* {order_number}
+*Item:* {user_data.get('selected_item', 'Custom Cake')}
+
+Thank you for your order, {user.name}! Your order has been received and is being processed.
+
+We'll contact you at {user.email or user.phone} if we need any additional information.
+
+*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+
+Please visit www.cakefairy1.com for terms and conditions.
+            """
+            
+            send_message(confirmation_msg, user_data['sender'], phone_id)
+            
+            # Notify agent/owner
+            if owner_phone:
+                agent_notification = f"""
+📋 *NEW CAKE ORDER* 📋
+
+*Order Number:* {order_number}
+*Customer:* {user.name}
+*Phone:* {user.phone}
+*Email:* {user.email}
+*Item:* {user_data.get('selected_item', 'Custom Cake')}
+*Due Date:* {user.due_date} at {user.due_time}
+*Theme:* {user.theme}
+
+Please check the order system for details.
+                """
+                send_message(agent_notification, owner_phone, phone_id)
+            
+            # Return to main menu
+            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
             return handle_welcome("", user_data, phone_id)
             
-        user = User(user_data.get('name', 'User'), user_data['sender'])
-        user.support_type = selected_option
-        
-        if selected_option == SupportOptions.TECH:
-            send_message(
-                "Please describe your technical issue:\n"
-                "1. System/feature having issues\n"
-                "2. Error messages received\n"
-                "3. Steps to reproduce the issue",
-                user_data['sender'],
-                phone_id
-            )
+        else:
+            # Restart order process
+            send_message("Let's start over with your order. Please provide your full name:", user_data['sender'], phone_id)
+            user = User(name="", phone=user_data['sender'])
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'name',
+                'selected_item': user_data.get('selected_item')
+            })
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'name'
+            }
             
-        elif selected_option == SupportOptions.BILLING:
-            send_message(
-                "Please provide:\n"
-                "1. Invoice/transaction number\n"
-                "2. Payment method used\n"
-                "3. Description of the issue",
-                user_data['sender'],
-                phone_id
-            )
-            
-        elif selected_option == SupportOptions.GENERAL:
-            send_message(
-                "Please describe your enquiry:",
-                user_data['sender'],
-                phone_id
-            )
-            
-        update_user_state(user_data['sender'], {
-            'step': 'get_support_details',
-            'user': user.to_dict()
-        })
-        return {
-            'step': 'get_support_details',
-            'user': user.to_dict()
+    except Exception as e:
+        logging.error(f"Error in handle_confirm_order: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def handle_cupcake_inquiry(prompt, user_data, phone_id):
+    try:
+        # Save cupcake inquiry
+        inquiry_data = {
+            'details': prompt,
+            'timestamp': datetime.now().isoformat(),
+            'phone': user_data['sender']
         }
         
-    except Exception as e:
-        logging.error(f"Error in handle_support_menu: {e}")
-        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
-
-def handle_get_support_details(prompt, user_data, phone_id):
-   
-    try:
-        user = User.from_dict(user_data['user'])
+        inquiry_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        redis_client.setex(f"cupcake_inquiry:{inquiry_id}", 604800, json.dumps(inquiry_data))
         
-        # Send support request to admin
-        admin_msg = (
-            f"🆘 *New Support Request* - {user.support_type.value}\n\n"
-            f"👤 From: {user.name} - {user.phone}\n"
-            f"📝 Details: {prompt}"
-        )
-        send_message(admin_msg, owner_phone, phone_id)
-        
+        # Send confirmation
         send_message(
-            "Thank you! Your support request has been logged. Our team will respond shortly.\n"
-            "Reference: #" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=6)),
+            "Thank you for your cupcake inquiry! We've received your details and will contact you shortly with a quote.",
             user_data['sender'],
             phone_id
         )
         
-        # Call human_agent to set up the agent handover
-        return human_agent("", user_data, phone_id)
+        # Notify agent/owner
+        if owner_phone:
+            agent_msg = f"""
+🧁 *NEW CUPCAKE INQUIRY* 🧁
+
+*Inquiry ID:* {inquiry_id}
+*Customer:* {user_data['sender']}
+*Details:* {prompt[:200]}{'...' if len(prompt) > 200 else ''}
+
+Please contact the customer for more details.
+            """
+            send_message(agent_msg, owner_phone, phone_id)
         
+        # Return to main menu
+        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        return handle_welcome("", user_data, phone_id)
+            
     except Exception as e:
-        logging.error(f"Error in handle_get_support_details: {e}")
+        logging.error(f"Error in handle_cupcake_inquiry: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
+        return {'step': 'main_menu'}
+
+def handle_pricing_menu(prompt, user_data, phone_id):
+    try:
+        selected_option = None
+        for option in CakeTypeOptions:
+            if prompt.lower() in option.value.lower() and option != CakeTypeOptions.BACK:
+                selected_option = option
+                break
+                
+        if not selected_option:
+            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
+            return {'step': 'pricing_menu'}
+            
+        if selected_option == CakeTypeOptions.FRESH_CREAM:
+            pricing_msg = """
+💰 *Fresh Cream Cakes Pricing* 💰
+
+• Cake Fairy Cake - $20
+• Double Delite (2 flavours) - Additional $5
+• Triple Delite (3 flavours) - Additional $10
+• Small (6 inch) - $30
+• Large (8 inch 3 layers or 7 inch 4 layers) - $40
+• Large (10 inch 2 layers) - $60
+• Extra Large (10 inch 3 layers) - $80
+• Extra Tall Cake (7 inch or 8 inch) - $65
+
+*2-Tier Cakes:*
+• 4 inch + 6 inch - $60
+• 5 inch + 7 inch - $80
+• 6 inch + 8 inch - $110
+• 7 inch + 9 inch - $140
+• 8 inch + 10 inch - $170
+
+*3-Tier Cakes:*
+• 4 inch + 6 inch + 8 inch - $140
+• 5 inch + 7 inch + 9 inch - $170
+• 6 inch + 8 inch + 10 inch - $210
+
+*Additional Options:*
+• Fondant - Additional $20
+• Ganache - Additional $10
+• SMBC - Additional $15
+            """
+            
+        elif selected_option == CakeTypeOptions.FRUIT:
+            pricing_msg = """
+💰 *Fruit Cakes Pricing* 💰
+
+• 6 inch - $40
+• 8 inch - $70
+            """
+            
+        elif selected_option == CakeTypeOptions.PLASTIC_ICING:
+            pricing_msg = """
+💰 *Plastic Icing Cakes Pricing* 💰
+
+• Small (6 inch) - $40
+• Medium (8 inch) - $50
+• Large (10 inch 2 layers) - $70
+• Extra Large (10 inch 3 layers) - $100
+            """
+            
+        send_message(pricing_msg, user_data['sender'], phone_id)
+        
+        # Ask if they want to order
+        send_button_message(
+            "Would you like to place an order?",
+            [
+                {"id": "order_yes", "title": "Yes, place order"},
+                {"id": "order_no", "title": "No, back to menu"}
+            ],
+            user_data['sender'],
+            phone_id
+        )
+        
+        update_user_state(user_data['sender'], {
+            'step': 'pricing_order_decision',
+            'cake_type': selected_option.value
+        })
+        return {'step': 'pricing_order_decision'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_pricing_menu: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def handle_pricing_order_decision(prompt, user_data, phone_id):
+    try:
+        if "yes" in prompt.lower() or "order_yes" in prompt:
+            # Redirect to cake type menu based on selection
+            cake_type = user_data.get('cake_type')
+            if cake_type == CakeTypeOptions.FRESH_CREAM.value:
+                return handle_cake_types_menu(CakeTypeOptions.FRESH_CREAM.value, user_data, phone_id)
+            elif cake_type == CakeTypeOptions.FRUIT.value:
+                return handle_cake_types_menu(CakeTypeOptions.FRUIT.value, user_data, phone_id)
+            elif cake_type == CakeTypeOptions.PLASTIC_ICING.value:
+                return handle_cake_types_menu(CakeTypeOptions.PLASTIC_ICING.value, user_data, phone_id)
+            else:
+                return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
+        else:
+            return handle_main_menu("", user_data, phone_id)
+            
+    except Exception as e:
+        logging.error(f"Error in handle_pricing_order_decision: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
 
 def handle_contact_menu(prompt, user_data, phone_id):
     try:
@@ -1114,26 +1369,33 @@ def handle_contact_menu(prompt, user_data, phone_id):
             
         if selected_option == ContactOptions.CALLBACK:
             send_message(
-                "Please provide your full name.\n",
+                "Please provide your name and the best time to call you back:",
                 user_data['sender'],
                 phone_id
             )
-            update_user_state(user_data['sender'], {'step': 'get_callback_details'})
-            return {'step': 'get_callback_details'}
+            update_user_state(user_data['sender'], {'step': 'callback_request'})
+            return {'step': 'callback_request'}
             
-        elif selected_option == ContactOptions.AGENT:
-            send_message(
-                "Connecting you to an agent...\n"
-                "If no one is available immediately, your message will be forwarded and you'll receive a response soon.",
-                user_data['sender'],
-                phone_id
-            )
-            
-            # Notify admin
-            admin_msg = f"👤 {user_data['sender']} requested to speak with an agent."
-            send_message(admin_msg, owner_phone, phone_id)
-            
-            return human_agent("", user_data, phone_id)
+        elif selected_option == ContactOptions.DIRECT:
+            contact_info = """
+📞 *Contact Information* 📞
+
+You can reach us at:
+• Phone: [Your business phone number]
+• Email: [Your business email]
+• Website: www.cakefairy1.com
+
+Business Hours:
+• Monday-Friday: 8:00 AM - 6:00 PM
+• Saturday: 9:00 AM - 4:00 PM
+• Sunday: Closed
+
+We're located at:
+[Your business address]
+            """
+            send_message(contact_info, user_data['sender'], phone_id)
+            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+            return handle_welcome("", user_data, phone_id)
             
         elif selected_option == ContactOptions.BACK:
             return handle_welcome("", user_data, phone_id)
@@ -1141,587 +1403,403 @@ def handle_contact_menu(prompt, user_data, phone_id):
     except Exception as e:
         logging.error(f"Error in handle_contact_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
+        return {'step': 'main_menu'}
 
-def handle_get_callback_details(prompt, user_data, phone_id):
+def handle_callback_request(prompt, user_data, phone_id):
     try:
-        if 'name' not in user_data:
-            update_user_state(user_data['sender'], {
-                'step': 'get_callback_details',
-                'name': prompt,
-                'field': 'time'
-            })
-            send_message("Thank you. Please provide the best time to call:", user_data['sender'], phone_id)
-            return {
-                'step': 'get_callback_details',
-                'name': prompt,
-                'field': 'time'
-            }
-            
-        elif user_data.get('field') == 'time':
-            # Send callback request to admin
-            admin_msg = (
-                "📞 *Callback Request*\n\n"
-                f"👤 Name: {user_data['name']}\n"
-                f"📞 Phone: {user_data['sender']}\n"
-                f"⏰ Preferred Time: {prompt}"
-            )
-            send_message(admin_msg, owner_phone, phone_id)
-            
-            send_message(
-                "Thank you! We'll call you at the requested time.\n"
-                "Reference: #" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=6)),
-                user_data['sender'],
-                phone_id
-            )
-            
-            return handle_welcome("", user_data, phone_id)
-            
-    except Exception as e:
-        logging.error(f"Error in handle_get_callback_details: {e}")
-        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
-
-
-def human_agent(prompt, user_data, phone_id):
-    """Handles the handover process to a human agent."""
-    try:
-        if not AGENT_NUMBERS:
-            send_message(
-                "Sorry, no agents are currently available. Please try again later.",
-                user_data['sender'],
-                phone_id
-            )
-            return handle_welcome("", user_data, phone_id)
-
-        # Pick a random agent
-        selected_agent = random.choice(AGENT_NUMBERS)
-
-        # Create a conversation ID
-        conversation_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        conversation_data = {
-            'customer': user_data['sender'],
-            'agent': selected_agent,
-            'active': False
+        # Save callback request
+        callback_data = {
+            'request': prompt,
+            'timestamp': datetime.now().isoformat(),
+            'phone': user_data['sender']
         }
-        print(f"Creating conversation {conversation_id} with data: {conversation_data}")
-        redis_client.setex(f"agent_conversation:{conversation_id}", 86400, json.dumps(conversation_data))
-        print(f"Conversation {conversation_id} saved to Redis")
         
-        # Verify conversation was saved
-        saved_conv = redis_client.get(f"agent_conversation:{conversation_id}")
-        print(f"Verified saved conversation: {saved_conv}")
-
-        # Save customer state
-        update_user_state(user_data['sender'], {
-            'step': 'human_agent',
-            'assigned_agent': selected_agent,
-            'agent_handover': True,
-            'conversation_id': conversation_id
-        })
-
-        # Save agent state so they can respond to Accept/Reject
-        agent_state = {
-            'step': 'agent_response',
-            'conversation_id': conversation_id,
-            'awaiting_agent_response': True,
-            'sender': selected_agent
-        }
-        print(f"Setting agent state for {selected_agent}: {agent_state}")
-        update_user_state(selected_agent, agent_state)
+        callback_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        redis_client.setex(f"callback:{callback_id}", 604800, json.dumps(callback_data))
         
-        # Also try to set state for normalized version
-        normalized_agent = normalize_phone_number(selected_agent)
-        if normalized_agent != selected_agent:
-            print(f"Also setting state for normalized agent number: {normalized_agent}")
-            update_user_state(normalized_agent, agent_state)
-
-        # Notify customer
+        # Send confirmation
         send_message(
-            f"🚀 Connecting you to an agent...\n\n"
-            f"Your conversation ID: {conversation_id}\n"
-            "Please wait for the agent to accept your request.",
+            "Thank you for your callback request! We've received your information and will contact you shortly.",
             user_data['sender'],
             phone_id
         )
-
-        # Ask agent to accept/reject
-        print(f"Sending button message to agent: {selected_agent}")
-        print(f"Agent number type: {type(selected_agent)}")
-        print(f"Phone ID: {phone_id}")
-        print(f"Agent number in AGENT_NUMBERS: {selected_agent in AGENT_NUMBERS}")
-        print(f"All AGENT_NUMBERS: {AGENT_NUMBERS}")
         
-        button_sent = send_button_message(
-            f"New Chat Request\n\n"
-            f"You can send 'exit' to end the chat anytime.\n\n"
-            f"From: {user_data.get('name', 'Customer')} - {user_data['sender']}\n"
-            f"Conversation ID: {conversation_id}",
-            [
-                {"id": "accept_chat", "title": "Accept Chat"},
-                {"id": "reject_chat", "title": "Reject Chat"}
-            ],
-            selected_agent,
+        # Notify agent/owner
+        if owner_phone:
+            agent_msg = f"""
+📞 *NEW CALLBACK REQUEST* 📞
+
+*Request ID:* {callback_id}
+*Customer:* {user_data['sender']}
+*Details:* {prompt[:200]}{'...' if len(prompt) > 200 else ''}
+
+Please contact the customer as soon as possible.
+            """
+            send_message(agent_msg, owner_phone, phone_id)
+        
+        # Return to main menu
+        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        return handle_welcome("", user_data, phone_id)
+            
+    except Exception as e:
+        logging.error(f"Error in handle_callback_request: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def handle_order_menu(prompt, user_data, phone_id):
+    try:
+        selected_option = None
+        for option in OrderOptions:
+            if prompt.lower() in option.value.lower():
+                selected_option = option
+                break
+                
+        if not selected_option:
+            send_message("Invalid selection. Please choose an option from the list.", user_data['sender'], phone_id)
+            return {'step': 'order_menu'}
+            
+        if selected_option == OrderOptions.NEW_ORDER:
+            return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
+            
+        elif selected_option == OrderOptions.EXISTING_ORDER:
+            send_message(
+                "Please provide your order number or phone number associated with your order:",
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {'step': 'check_existing_order'})
+            return {'step': 'check_existing_order'}
+            
+        elif selected_option == OrderOptions.BACK:
+            return handle_welcome("", user_data, phone_id)
+            
+    except Exception as e:
+        logging.error(f"Error in handle_order_menu: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def handle_check_existing_order(prompt, user_data, phone_id):
+    try:
+        # Search for order by order number or phone number
+        order_key = None
+        
+        # Check if it's an order number (alphanumeric, typically 6-8 characters)
+        if len(prompt) >= 6 and len(prompt) <= 8 and prompt.isalnum():
+            order_data = redis_client.get(f"order:{prompt.upper()}")
+            if order_data:
+                order_key = f"order:{prompt.upper()}"
+        
+        # If not found by order number, search by phone number
+        if not order_key:
+            # Normalize phone number for search
+            search_phone = normalize_phone_number(prompt)
+            if not search_phone:
+                search_phone = user_data['sender']  # Use current phone if search fails
+            
+            # This is a simplified approach - in production you'd want a better index
+            # For now, we'll check a few common formats
+            phone_variations = [
+                search_phone,
+                search_phone.replace('+', ''),
+                '0' + search_phone[4:] if search_phone.startswith('+263') else None,
+                search_phone[3:] if search_phone.startswith('263') else None
+            ]
+            
+            for phone_var in phone_variations:
+                if not phone_var:
+                    continue
+                    
+                # Scan for orders with this phone (this is simplified)
+                # In production, you'd want a proper index
+                cursor = 0
+                found = False
+                while True:
+                    cursor, keys = redis_client.scan(cursor, match="order:*", count=100)
+                    for key in keys:
+                        order_data = redis_client.get(key)
+                        if order_data:
+                            order_json = json.loads(order_data)
+                            user_info = order_json.get('user', {})
+                            order_phone = user_info.get('phone', '')
+                            
+                            # Check if phone matches any variation
+                            if order_phone and any(
+                                phone_var in norm_phone 
+                                for norm_phone in [
+                                    order_phone,
+                                    normalize_phone_number(order_phone),
+                                    order_phone.replace('+', ''),
+                                    '0' + order_phone[4:] if order_phone.startswith('+263') else None,
+                                    order_phone[3:] if order_phone.startswith('263') else None
+                                ]
+                                if norm_phone
+                            ):
+                                order_key = key
+                                found = True
+                                break
+                    
+                    if found or cursor == 0:
+                        break
+        
+        if order_key:
+            order_data = redis_client.get(order_key)
+            order_json = json.loads(order_data)
+            
+            order_info = f"""
+📋 *ORDER STATUS* 📋
+
+*Order Number:* {order_json.get('order_number', 'N/A')}
+*Status:* {order_json.get('status', 'pending').upper()}
+*Item:* {order_json.get('selected_item', 'Custom Cake')}
+*Customer:* {order_json.get('user', {}).get('name', 'N/A')}
+*Due Date:* {order_json.get('user', {}).get('due_date', 'N/A')}
+
+For more details or to make changes, please contact us directly.
+            """
+            
+            send_message(order_info, user_data['sender'], phone_id)
+        else:
+            send_message(
+                "Sorry, we couldn't find an order matching that information. "
+                "Please check your order number or phone number and try again, "
+                "or contact us directly for assistance.",
+                user_data['sender'],
+                phone_id
+            )
+        
+        # Return to main menu
+        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        return handle_welcome("", user_data, phone_id)
+            
+    except Exception as e:
+        logging.error(f"Error in handle_check_existing_order: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def human_agent(prompt, user_data, phone_id):
+    try:
+        send_message(
+            "You've requested to speak with a human agent. "
+            "One of our team members will contact you shortly. "
+            "Please provide a brief description of what you need help with:",
+            user_data['sender'],
             phone_id
         )
         
-        if not button_sent:
-            print(f"Failed to send button message to agent {selected_agent}")
-            # Fallback to simple text message
-            send_message(
-                f"New Chat Request\n\n"
-                f"From: {user_data.get('name', 'Customer')} - {user_data['sender']}\n"
-                f"Conversation ID: {conversation_id}\n\n"
-                f"Reply with 'accept' to accept or 'reject' to reject.",
-                selected_agent,
-                phone_id
-            )
-        print("*******************************")
-        return {
-            'step': 'agent_response',
-            'assigned_agent': selected_agent,
-            'conversation_id': conversation_id,
-            'awaiting_agent_response': True
+        # Save agent request
+        agent_request = {
+            'timestamp': datetime.now().isoformat(),
+            'phone': user_data['sender'],
+            'initial_message': prompt
         }
+        
+        request_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        redis_client.setex(f"agent_request:{request_id}", 3600, json.dumps(agent_request))  # 1 hour expiration
+        
+        # Notify agent/owner
+        if owner_phone:
+            agent_msg = f"""
+👨‍💼 *HUMAN AGENT REQUEST* 👩‍💼
 
+*Request ID:* {request_id}
+*Customer:* {user_data['sender']}
+*Initial Message:* {prompt[:200]}{'...' if len(prompt) > 200 else ''}
+
+Please contact the customer as soon as possible.
+            """
+            send_message(agent_msg, owner_phone, phone_id)
+        
+        update_user_state(user_data['sender'], {'step': 'waiting_for_agent'})
+        return {'step': 'waiting_for_agent'}
+            
     except Exception as e:
         logging.error(f"Error in human_agent: {e}")
-        send_message("An error occurred during agent transfer. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
 
-
-def agent_response(prompt, user_data, phone_id):
-    """Handles agent accept/reject and forwards chat messages."""
+def handle_waiting_for_agent(prompt, user_data, phone_id):
     try:
-        print(f"Agent response called with prompt: '{prompt}' and user_data: {user_data}")
+        # Forward message to agent
+        if owner_phone:
+            forward_msg = f"""
+📩 *Message from customer {user_data['sender']}:*
+
+{prompt}
+            """
+            send_message(forward_msg, owner_phone, phone_id)
         
-        # First, check if we're in an active chat conversation
-        conversation_id = user_data.get('conversation_id')
-        if conversation_id:
-            conv_data_raw = redis_client.get(f"agent_conversation:{conversation_id}")
-            if conv_data_raw:
-                conv_data = json.loads(conv_data_raw)
-                print(f"Found conversation data: {conv_data}")
-                print(f"Current sender: {user_data['sender']}, Agent: {conv_data['agent']}, Customer: {conv_data['customer']}")
-
-                # If conversation is not active yet, handle accept/reject before any forwarding
-                if not conv_data.get('active'):
-                    # Only the assigned agent can accept/reject
-                    if user_data['sender'] == conv_data['agent']:
-                        # Accept chat
-                        if prompt == "accept_chat" or "accept" in prompt.lower():
-                            print("Processing accept chat request (pre-activation path)")
-                            customer_number = conv_data.get('customer')
-                            # Notify both parties
-                            send_message(
-                                "Agent has joined the conversation. You can now chat directly.\n",
-                                customer_number,
-                                phone_id
-                            )
-                            send_message(
-                                "✅ You are now connected to the customer.\n"
-                                "Type 'exit' to end the conversation and return the customer to the bot.",
-                                user_data['sender'],
-                                phone_id
-                            )
-
-                            # Activate the conversation
-                            conv_data['active'] = True
-                            redis_client.setex(f"agent_conversation:{conversation_id}", 86400, json.dumps(conv_data))
-
-                            # Update customer state
-                            customer_state = {
-                                'step': 'agent_response',
-                                'conversation_id': conversation_id,
-                                'active_chat': True,
-                                'sender': customer_number
-                            }
-                            print(f"Setting customer {customer_number} state to: {customer_state}")
-                            update_user_state(customer_number, customer_state)
-
-                            # Update agent state
-                            agent_state = {
-                                'step': 'agent_response',
-                                'conversation_id': conversation_id,
-                                'active_chat': True,
-                                'sender': user_data['sender']
-                            }
-                            print(f"Setting agent {user_data['sender']} state to: {agent_state}")
-                            update_user_state(user_data['sender'], agent_state)
-
-                            return {
-                                'step': 'agent_response',
-                                'conversation_id': conversation_id,
-                                'active_chat': True
-                            }
-
-                        # Reject chat
-                        elif prompt == "reject_chat" or "reject" in prompt.lower():
-                            print("Processing reject chat request (pre-activation path)")
-                            customer_number = conv_data.get('customer')
-                            send_message(
-                                "Sorry, the agent is unable to take your chat at this time. "
-                                "Please try again later or leave a message.",
-                                customer_number,
-                                phone_id
-                            )
-                            redis_client.delete(f"agent_conversation:{conversation_id}")
-                            return handle_welcome("", {'sender': customer_number}, phone_id)
-                        else:
-                            print(f"Unexpected prompt before activation: '{prompt}'")
-                            send_message("Invalid selection. Please choose 'Accept Chat' or 'Reject Chat'.", user_data['sender'], phone_id)
-                            return {'step': 'agent_response', 'conversation_id': conversation_id}
-                    else:
-                        # Customer messaged before agent accepts; remind them to wait
-                        send_message("Please wait for the agent to accept your request.", conv_data['customer'], phone_id)
-                        return {'step': 'agent_response', 'conversation_id': conversation_id}
-
-                # Exit command ends chat
-                if prompt.lower() == "exit":
-                    print(f"Exit command received from {user_data['sender']}")
-                    if user_data['sender'] == conv_data['agent']:
-                        print(f"Agent {user_data['sender']} ending conversation")
-                        send_message(
-                            "You've ended the conversation. The customer will now return to the bot.",
-                            conv_data['agent'],
-                            phone_id
-                        )
-                        send_message(
-                            "The agent has ended the conversation. You're now back with the bot.",
-                            conv_data['customer'],
-                            phone_id
-                        )
-                    else:
-                        print(f"Customer {user_data['sender']} ending conversation")
-                        send_message(
-                            "You've ended the conversation with the agent. You're now back with the bot.",
-                            conv_data['customer'],
-                            phone_id
-                        )
-                        send_message(
-                            "The customer has ended the conversation.",
-                            conv_data['agent'],
-                            phone_id
-                        )
-                        
-                        # Reset agent state
-                        agent_state = {'step': 'agent_response', 'sender': conv_data['agent']}
-                        print(f"Resetting agent {conv_data['agent']} state to: {agent_state}")
-                        update_user_state(conv_data['agent'], agent_state)
-
-                    # Ask customer if they want to restart with the bot
-                    restart_state = {'step': 'restart_confirmation', 'sender': conv_data['customer']}
-                    print(f"Setting customer {conv_data['customer']} state to: {restart_state}")
-                    update_user_state(conv_data['customer'], restart_state)
-                    
-                    # Delete conversation and ask for restart confirmation
-                    print(f"Deleting conversation {conversation_id}")
-                    redis_client.delete(f"agent_conversation:{conversation_id}")
-                    return handle_restart_confirmation("", {'sender': conv_data['customer']}, phone_id)
-
-                # Forward messages between agent and customer
-                if user_data['sender'] == conv_data['agent']:
-                    # Agent message to customer
-                    print(f"Agent {user_data['sender']} sending message to customer {conv_data['customer']}: {prompt}")
-                    send_message(f"👨‍💼 Agent: {prompt}", conv_data['customer'], phone_id)
-                    print(f"✅ Forwarded agent message to customer: {conv_data['customer']}")
-                else:
-                    # Customer message to agent
-                    print(f"Customer {user_data['sender']} sending message to agent {conv_data['agent']}: {prompt}")
-                    send_message(f"👤 Customer: {prompt}", conv_data['agent'], phone_id)
-                    print(f"✅ Forwarded customer message to agent: {conv_data['agent']}")
-
-                # Return current state to maintain conversation
-                return {
-                    'step': 'agent_response',
-                    'conversation_id': conversation_id,
-                    'active_chat': True
-                }
+        send_message(
+            "Your message has been forwarded to our team. "
+            "We'll get back to you as soon as possible.",
+            user_data['sender'],
+            phone_id
+        )
         
-        # Handle accept/reject chat request (only if not in active chat)
-        if user_data.get('awaiting_agent_response') and not user_data.get('active_chat'):
-            print(f"Agent is awaiting response, prompt: '{prompt}'")
-            print(f"User data keys: {list(user_data.keys())}")
-            print(f"Conversation ID: {user_data.get('conversation_id')}")
-            print(f"Agent phone: {user_data.get('sender')}")
+        return {'step': 'waiting_for_agent'}
             
-            # Check for accept/reject buttons (both exact match and partial)
-            if prompt == "accept_chat" or "accept" in prompt.lower():
-                print("Processing accept chat request")
-                conversation_id = user_data.get('conversation_id')
-                print(f"Looking for conversation: {conversation_id}")
-                conv_data_raw = redis_client.get(f"agent_conversation:{conversation_id}")
-                print(f"Conversation data raw: {conv_data_raw}")
-                if not conv_data_raw:
-                    print(f"❌ Conversation {conversation_id} not found in Redis")
-                    print(f"Available keys in Redis: {redis_client.keys('agent_conversation:*')}")
-                    send_message("❌ Conversation not found or expired.", user_data['sender'], phone_id)
-                    return {'step': 'agent_response'}
-
-                conv_data = json.loads(conv_data_raw)
-                print(f"Conversation data: {conv_data}")
-                customer_number = conv_data.get('customer')
-                print(f"Customer number: {customer_number}")
-
-                send_message(
-                    "Agent has joined the conversation. You can now chat directly.\n"
-                    "Type 'exit' at any time to end the conversation.",
-                    customer_number,
-                    phone_id
-                )
-                send_message(
-                    "✅ You are now connected to the customer.\n"
-                    "Type 'exit' to end the conversation and return to the bot.",
-                    user_data['sender'],
-                    phone_id
-                )
-
-                conv_data['active'] = True
-                redis_client.setex(f"agent_conversation:{conversation_id}", 86400, json.dumps(conv_data))
-
-                # Update customer state to indicate they're in an active agent chat
-                customer_state = {
-                    'step': 'agent_response',
-                    'conversation_id': conversation_id,
-                    'active_chat': True,
-                    'sender': customer_number
-                }
-                print(f"Setting customer {customer_number} state to: {customer_state}")
-                update_user_state(customer_number, customer_state)
-
-                # Update agent state to remove awaiting_agent_response and set active_chat
-                agent_state = {
-                    'step': 'agent_response',
-                    'conversation_id': conversation_id,
-                    'active_chat': True,
-                    'sender': user_data['sender']
-                }
-                print(f"Setting agent {user_data['sender']} state to: {agent_state}")
-                update_user_state(user_data['sender'], agent_state)
-
-                return {
-                    'step': 'agent_response',
-                    'conversation_id': conversation_id,
-                    'active_chat': True
-                }
-
-            elif prompt == "reject_chat" or "reject" in prompt.lower():
-                print("Processing reject chat request")
-                conversation_id = user_data.get('conversation_id')
-                conv_data_raw = redis_client.get(f"agent_conversation:{conversation_id}")
-                if conv_data_raw:
-                    conv_data = json.loads(conv_data_raw)
-                    customer_number = conv_data.get('customer')
-                    send_message(
-                        "Sorry, the agent is unable to take your chat at this time. "
-                        "Please try again later or leave a message.",
-                        customer_number,
-                        phone_id
-                    )
-                    redis_client.delete(f"agent_conversation:{conversation_id}")
-                    return handle_welcome("", {'sender': customer_number}, phone_id)
-                return {'step': 'agent_response'}
-            else:
-                # If we reach here, the prompt didn't match accept or reject
-                print(f"Unexpected prompt in agent_response: '{prompt}'")
-                send_message("Invalid selection. Please choose 'Accept Chat' or 'Reject Chat'.", user_data['sender'], phone_id)
-                return {'step': 'agent_response'}
-
-        return handle_welcome("", user_data, phone_id)
-
     except Exception as e:
-        logging.error(f"Error in agent_response: {e}")
-        send_message("An error occurred in agent communication. Returning to main menu.", user_data['sender'], phone_id)
+        logging.error(f"Error in handle_waiting_for_agent: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+# Main message handler
+def handle_message(prompt, user_data, phone_id):
+    try:
+        print(f"Handling message: '{prompt}' for user: {user_data}")
+        
+        # Handle empty or very short messages
+        if not prompt or len(prompt.strip()) < 1:
+            send_message("Please type a message or select an option from the menu.", user_data['sender'], phone_id)
+            return user_data
+        
+        # Convert prompt to lowercase for easier matching
+        prompt_lower = prompt.lower()
+        
+        # Check for restart commands
+        if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu"]):
+            return handle_welcome("", user_data, phone_id)
+            
+        # Check for agent request at any point
+        if any(word in prompt_lower for word in ["agent", "human", "representative", "speak to someone"]):
+            return human_agent(prompt, user_data, phone_id)
+        
+        # Route based on current step
+        current_step = user_data.get('step', 'welcome')
+        
+        if current_step == 'welcome':
+            return handle_welcome(prompt, user_data, phone_id)
+            
+        elif current_step == 'main_menu':
+            return handle_main_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'cake_types_menu':
+            return handle_cake_types_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'fresh_cream_menu':
+            return handle_fresh_cream_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'tier_decision':
+            return handle_tier_decision(prompt, user_data, phone_id)
+            
+        elif current_step == 'tier_cakes_menu':
+            return handle_tier_cakes_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'two_tier_menu':
+            return handle_two_tier_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'three_tier_menu':
+            return handle_three_tier_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'fruit_cake_menu':
+            return handle_fruit_cake_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'plastic_icing_menu':
+            return handle_plastic_icing_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'order_decision':
+            return handle_order_decision(prompt, user_data, phone_id)
+            
+        elif current_step == 'get_order_info':
+            return handle_get_order_info(prompt, user_data, phone_id)
+            
+        elif current_step == 'confirm_order':
+            return handle_confirm_order(prompt, user_data, phone_id)
+            
+        elif current_step == 'cupcake_inquiry':
+            return handle_cupcake_inquiry(prompt, user_data, phone_id)
+            
+        elif current_step == 'pricing_menu':
+            return handle_pricing_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'pricing_order_decision':
+            return handle_pricing_order_decision(prompt, user_data, phone_id)
+            
+        elif current_step == 'contact_menu':
+            return handle_contact_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'callback_request':
+            return handle_callback_request(prompt, user_data, phone_id)
+            
+        elif current_step == 'order_menu':
+            return handle_order_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'check_existing_order':
+            return handle_check_existing_order(prompt, user_data, phone_id)
+            
+        elif current_step == 'waiting_for_agent':
+            return handle_waiting_for_agent(prompt, user_data, phone_id)
+            
+        else:
+            # Default fallback
+            send_message("I'm not sure how to help with that. Let me show you our main menu.", user_data['sender'], phone_id)
+            return handle_welcome("", user_data, phone_id)
+            
+    except Exception as e:
+        logging.error(f"Error in handle_message: {e}")
+        logging.error(traceback.format_exc())
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'welcome'}
 
-
-# Action mapping
-action_mapping = {
-    "welcome": handle_welcome,
-    "restart_confirmation": handle_restart_confirmation,
-    "main_menu": handle_main_menu,
-    "about_menu": handle_about_menu,
-    "services_menu": handle_services_menu,
-    "service_detail": handle_service_detail,
-    "chatbot_menu": handle_chatbot_menu,
-    "get_quote_info": handle_get_quote_info,
-    "quote_followup": handle_quote_followup,
-    "support_menu": handle_support_menu,
-    "get_support_details": handle_get_support_details,
-    "contact_menu": handle_contact_menu,
-    "get_callback_details": handle_get_callback_details,
-    "human_agent": agent_response,
-    "agent_response": agent_response,
-    "restart_confirmation": handle_restart_confirmation
-}
-
-def get_action(current_state, prompt, user_data, phone_id):
-    # Determine which handler will be used
-    handler = action_mapping.get(current_state, handle_welcome)
-
-    # Log the routing info
-    logging.info(f"[get_action] State: {current_state}, Prompt: {prompt}, "
-                 f"Handler: {handler.__name__}, Sender: {user_data.get('sender')}")
-
-    try:
-        return handler(prompt, user_data, phone_id)
-    except Exception as e:
-        logging.error(f"[get_action] Error in handler {handler.__name__} for state {current_state}: {e}", exc_info=True)
-        # Fallback to welcome
-        return handle_welcome("", user_data, phone_id)
-
-
-# Message handler
-def message_handler(prompt, sender, phone_id):
-    text = prompt.strip().lower()
-
-    # If the sender is an agent, set them to agent mode on first contact
-    normalized_sender = normalize_phone_number(sender)
-    print(f"Checking if {sender} (normalized: {normalized_sender}) is in AGENT_NUMBERS: {AGENT_NUMBERS}")
-    print(f"Sender type: {type(sender)}, AGENT_NUMBERS types: {[type(x) for x in AGENT_NUMBERS]}")
-    
-    if normalized_sender in AGENT_NUMBERS or sender in AGENT_NUMBERS:
-        print(f"Agent message received: '{prompt}' from {sender}")
-        print(f"AGENT_NUMBERS: {AGENT_NUMBERS}")
-        state = get_user_state(sender)
-        print(f"Current agent state: {state}")
-        
-        # Also try to get state for normalized sender
-        if state.get('step') != 'agent_response':
-            normalized_state = get_user_state(normalized_sender)
-            print(f"Normalized sender state: {normalized_state}")
-            if normalized_state.get('step') == 'agent_response':
-                state = normalized_state
-                print(f"Using normalized sender state: {state}")
-        
-        if state.get('step') != 'agent_response':
-            print(f"Updating agent state to agent_response")
-            update_user_state(sender, {
-                'step': 'agent_response',
-                'sender': sender
-            })
-            state = get_user_state(sender)  # refresh after update
-            print(f"Updated agent state: {state}")
-    
-        # 🚀 Directly call the agent_response() function
-        print(f"Calling agent_response with prompt: '{prompt}' and state: {state}")
-        updated_state = agent_response(prompt, state, phone_id)
-        print(f"Agent response returned: {updated_state}")
-        update_user_state(sender, updated_state)
-        return
-
-    # Check if user is in an active agent conversation
-    user_state = get_user_state(sender)
-    user_state['sender'] = sender
-    
-    print(f"User {sender} state: {user_state}")
-    
-    # If user is in agent_response state with active_chat, route to agent_response
-    if user_state.get('step') == 'agent_response' and user_state.get('active_chat'):
-        print(f"User {sender} is in active agent chat, routing to agent_response")
-        updated_state = agent_response(prompt, user_state, phone_id)
-        update_user_state(sender, updated_state)
-        return
-    
-    # Normal user handling
-    if text in ["hi", "hello", "hie", "hey", "start"]:
-        user_state = {'step': 'welcome', 'sender': sender}
-        updated_state = get_action('welcome', "", user_state, phone_id)
-        update_user_state(sender, updated_state)
-        return
-
-    step = user_state.get('step') or 'welcome'
-    updated_state = get_action(step, prompt, user_state, phone_id)
-    update_user_state(sender, updated_state)
-
-
-@app.route("/", methods=["GET"])
-def index():
-    return render_template("connected.html")
-
-@app.route("/webhook", methods=["POST"])
+@app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
-    if request.method == "POST":
+    if request.method == 'GET':
+        # Verify webhook
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        
+        if mode and token:
+            if mode == 'subscribe' and token == os.environ.get('VERIFY_TOKEN'):
+                print('WEBHOOK VERIFIED')
+                return challenge, 200
+            else:
+                return 'Forbidden', 403
+        return 'Bad Request', 400
+    
+    elif request.method == 'POST':
         try:
             data = request.get_json()
-            if not data:
-                logging.warning("Empty webhook request")
-                return jsonify({"status": "ok"}), 200
-
-            entries = data.get("entry", [])
-            if not entries:
-                logging.info("No entries in webhook")
-                return jsonify({"status": "ok"}), 200
-
-            for entry in entries:
-                changes = entry.get("changes", [])
-                for change in changes:
-                    value = change.get("value", {})
-                    metadata = value.get("metadata", {})
-                    phone_id = metadata.get("phone_number_id")
-                    
-                    if not phone_id:
-                        continue
-                        
-                    messages = value.get("messages", [])
-                    if not messages:
-                        continue
-                        
-                    message = messages[0]
-                    sender = message.get("from")
-                    if not sender:
-                        continue
-                    
-                    print(f"Webhook received message from: {sender} (type: {type(sender)})")
-
-                    # Handle different message types
-                    if "text" in message:
-                        text = message["text"].get("body", "").strip()
-                        if text:
-                            message_handler(text, sender, phone_id)
-                    elif "interactive" in message:
-                        interactive = message["interactive"]
-                        print(f"Interactive message received: {interactive}")
-                        
-                        # Handle list replies
-                        if interactive.get("type") == "list_reply":
-                            list_reply = interactive.get("list_reply", {})
-                            reply_title = list_reply.get("title", "").strip()
-                            if reply_title:
-                                message_handler(reply_title, sender, phone_id)
-
-                        
-                        # Handle button replies
-                        elif interactive.get("type") == "button_reply":
-                            button_reply = interactive.get("button_reply", {})
-                            button_id = button_reply.get("id")
-                            button_title = button_reply.get("title", "").strip()
-                            
-                            print(f"Button reply received - ID: '{button_id}', Title: '{button_title}', Sender: {sender}")
-                            print(f"Full button_reply data: {button_reply}")
-                        
-                            # Pass Accept/Reject IDs directly
-                            if button_id in ["accept_chat", "reject_chat"]:
-                                prompt = button_id
-                                print(f"Setting prompt to button_id: '{prompt}'")
-                            elif button_id == "quote_btn":
-                                prompt = "Request Quote"
-                            elif button_id == "back_btn":
-                                prompt = "Back to Services"
-                            else:
-                                prompt = button_title
-                        
-                            if prompt:
-                                print(f"Calling message_handler with prompt: '{prompt}' for sender: {sender}")
-                                message_handler(prompt, sender, phone_id)
-
-
+            print(f"Incoming webhook data: {data}")
+            
+            if data.get('object') == 'whatsapp_business_account':
+                for entry in data.get('entry', []):
+                    for change in entry.get('changes', []):
+                        if change.get('field') == 'messages':
+                            value = change.get('value')
+                            if value:
+                                message = value.get('messages', [{}])[0]
+                                if message.get('type') == 'text':
+                                    text = message['text']['body']
+                                    sender = message['from']
+                                    
+                                    # Normalize phone number
+                                    sender = normalize_phone_number(sender)
+                                    print(f"Processing message from {sender}: {text}")
+                                    
+                                    # Get user state
+                                    user_data = get_user_state(sender)
+                                    print(f"User state: {user_data}")
+                                    
+                                    # Handle the message
+                                    new_state = handle_message(text, user_data, phone_id)
+                                    print(f"New state: {new_state}")
+                                    
+                                    # Update user state if changed
+                                    if new_state != user_data:
+                                        update_user_state(sender, new_state)
+            
+            return jsonify({'status': 'success'}), 200
+            
         except Exception as e:
-            logging.error(f"Webhook processing error: {str(e)}\n{traceback.format_exc()}")
-            return jsonify({"status": "error", "message": str(e)}), 500
+            print(f"Error processing webhook: {e}")
+            print(traceback.format_exc())
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+    
+    return jsonify({'status': 'bad_request'}), 400
 
-        return jsonify({"status": "ok"}), 200
-        
+@app.route('/')
+def home():
+    return render_template('index.html')
 
-if __name__ == "__main__":
-    app.run(debug=True, port=8000)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
