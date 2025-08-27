@@ -1748,13 +1748,12 @@ def webhook():
         token = request.args.get('hub.verify_token')
         challenge = request.args.get('hub.challenge')
         
-        if mode and token:
-            if mode == 'subscribe' and token == os.environ.get('VERIFY_TOKEN'):
-                print('WEBHOOK VERIFIED')
-                return challenge, 200
-            else:
-                return 'Forbidden', 403
-        return 'Bad Request', 400
+        if mode == "subscribe" and token == "BOT":
+            return challenge, 200
+               
+        else:
+            return 'Forbidden', 403
+        
     
     elif request.method == 'POST':
         try:
