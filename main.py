@@ -1656,7 +1656,7 @@ def handle_message(prompt, user_data, phone_id):
         prompt_lower = prompt.lower()
         
         # Check for restart commands
-        if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu"]):
+        if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu", "hie", "hey", "hi"]):
             return handle_welcome("", user_data, phone_id)
             
         # Check for agent request at any point
