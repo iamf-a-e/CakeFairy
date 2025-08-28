@@ -658,7 +658,7 @@ def handle_restart_confirmation(prompt, user_data, phone_id):
         if text in ["yes", "y", "restart_yes", "ok", "sure", "yeah", "yep"]:
             return handle_welcome("", user_data, phone_id)
 
-        # Negative confirmation -> send goodbye and reset to welcome state
+        # Negative confirmation -> send goodbye 
         if text in ["no", "n", "restart_no", "nope", "nah"]:
             send_message("Have a good day!", user_data['sender'], phone_id)
             update_user_state(user_data['sender'], {'step': 'end'})
@@ -963,7 +963,7 @@ def handle_order_decision(prompt, user_data, phone_id):
                 user_data['sender'],
                 phone_id
             )
-            return handle_welcome("", user_data, phone_id)
+            return restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_order_decision: {e}")
