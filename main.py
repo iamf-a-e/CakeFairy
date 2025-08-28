@@ -1742,6 +1742,9 @@ def handle_message(prompt, user_data, phone_id):
                 return human_agent(prompt, user_data, phone_id)
             send_message("If you need anything else later, just say 'menu' to start again.", user_data['sender'], phone_id)
             return {'step': 'goodbye'}
+
+        elif current_step == 'restart_confirmation':
+            return handle_restart_confirmation(prompt, user_data, phone_id)
             
         elif current_step == 'main_menu':
             return handle_main_menu(prompt, user_data, phone_id)
