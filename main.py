@@ -1720,8 +1720,8 @@ def handle_message(prompt, user_data, phone_id):
         except Exception:
             pass
         
-        # Check for restart commands
-        if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu", "hie", "hey", "hi"]):
+        # Check for explicit restart commands (exact match only to avoid accidental triggers)
+        if prompt_lower.strip() in {"restart", "start over", "main menu", "menu", "hie", "hey", "hi"}:
             return handle_welcome("", user_data, phone_id)
             
         # Check for agent request at any point
