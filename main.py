@@ -479,7 +479,7 @@ def send_list_message(text, options, recipient, phone_id):
 # Handlers
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
-        "🎂 *Welcome to Fresh Cream Cakes!* 🎂\n\n"
+        "🎂 *Welcome to Cake Fairy!* 🎂\n\n"
         "We create delicious, beautifully decorated cakes for all occasions.\n\n"
         "Please choose an option to continue:"
     )
