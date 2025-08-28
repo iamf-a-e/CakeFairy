@@ -661,8 +661,8 @@ def handle_restart_confirmation(prompt, user_data, phone_id):
         # Negative confirmation -> send goodbye and reset to welcome state
         if text in ["no", "n", "restart_no", "nope", "nah"]:
             send_message("Have a good day!", user_data['sender'], phone_id)
-            update_user_state(user_data['sender'], {'step': 'welcome'})
-            return {'step': 'welcome'}
+            update_user_state(user_data['sender'], {'step': 'end'})
+            return 
 
         # Any other input -> re-send buttons
         send_button_message(
@@ -1063,7 +1063,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'theme',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What theme would you like? (e.g., birthday, wedding, anniversary):", user_data['sender'], phone_id)
+            send_message("What theme would you like? (e.g., birthday, wedding, anniversary, spiderman, barbie):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1123,7 +1123,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'message',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What message would you like on the cake? (e.g., Happy Birthday!):", user_data['sender'], phone_id)
+            send_message("What message would you like on the cake? (e.g., Happy Birthday!, I love you!):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1138,7 +1138,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'referral',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("How did you hear about us? (e.g., Facebook, friend, Google):", user_data['sender'], phone_id)
+            send_message("How did you hear about us? (e.g., Facebook, Friend, Google):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
