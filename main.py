@@ -1646,6 +1646,12 @@ def handle_waiting_for_agent(prompt, user_data, phone_id):
         )
         
         return {'step': 'waiting_for_agent'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_waiting_for_agent: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
 # Ask to restart utility and handler
 def ask_restart(user_data, phone_id):
     send_button_message(
@@ -1668,11 +1674,6 @@ def handle_restart_decision(prompt, user_data, phone_id):
         send_message("Okay. If you need anything else, just say 'menu' anytime.", user_data['sender'], phone_id)
         update_user_state(user_data['sender'], {'step': 'welcome'})
         return {'step': 'welcome'}
-            
-    except Exception as e:
-        logging.error(f"Error in handle_waiting_for_agent: {e}")
-        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'main_menu'}
 
 # Main message handler
 def handle_message(prompt, user_data, phone_id):
