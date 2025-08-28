@@ -658,11 +658,11 @@ def handle_restart_confirmation(prompt, user_data, phone_id):
         if text in ["yes", "y", "restart_yes", "ok", "sure", "yeah", "yep"]:
             return handle_welcome("", user_data, phone_id)
 
-        # Negative confirmation -> send goodbye 
+        # Negative confirmation -> send goodbye and move to a neutral state
         if text in ["no", "n", "restart_no", "nope", "nah"]:
             send_message("Have a good day!", user_data['sender'], phone_id)
-            update_user_state(user_data['sender'], {'step': 'end'})
-            return 
+            update_user_state(user_data['sender'], {'step': 'goodbye'})
+            return {'step': 'goodbye'}
 
         # Any other input -> re-send buttons
         send_button_message(
@@ -963,7 +963,7 @@ def handle_order_decision(prompt, user_data, phone_id):
                 user_data['sender'],
                 phone_id
             )
-            return restart_confirmation("", user_data, phone_id)
+            return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_order_decision: {e}")
@@ -1063,7 +1063,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'theme',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What theme would you like? (e.g., birthday, wedding, anniversary, spiderman, barbie):", user_data['sender'], phone_id)
+            send_message("What theme would you like? (e.g., birthday, wedding, anniversary):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1123,7 +1123,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'message',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What message would you like on the cake? (e.g., Happy Birthday!, I love you!):", user_data['sender'], phone_id)
+            send_message("What message would you like on the cake? (e.g., Happy Birthday!):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1138,7 +1138,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'referral',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("How did you hear about us? (e.g., Facebook, Friend, Google):", user_data['sender'], phone_id)
+            send_message("How did you hear about us? (e.g., Facebook, friend, Google):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1733,6 +1733,15 @@ def handle_message(prompt, user_data, phone_id):
         
         if current_step == 'welcome':
             return handle_welcome(prompt, user_data, phone_id)
+        
+        elif current_step == 'goodbye':
+            # Stay idle after saying goodbye; only react to explicit restart/menu/agent keywords
+            if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu", "hi", "hey", "hie"]):
+                return handle_welcome("", user_data, phone_id)
+            if any(word in prompt_lower for word in ["agent", "human", "representative", "speak to someone"]):
+                return human_agent(prompt, user_data, phone_id)
+            send_message("If you need anything else later, just say 'menu' to start again.", user_data['sender'], phone_id)
+            return {'step': 'goodbye'}
             
         elif current_step == 'main_menu':
             return handle_main_menu(prompt, user_data, phone_id)
