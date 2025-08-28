@@ -1401,8 +1401,8 @@ def handle_contact_menu(prompt, user_data, phone_id):
 📞 *Contact Information* 📞
 
 You can reach us at:
-• Phone: [Your business phone number]
-• Email: [Your business email]
+• Phone: +263 773 218 242/+263 292 71447
+• Email: sales@cakefairy1.com
 • Website: www.cakefairy1.com
 
 Business Hours:
@@ -1411,7 +1411,7 @@ Business Hours:
 • Sunday: Closed
 
 We're located at:
-[Your business address]
+30 Rhodesville Ave, Harare
             """
             send_message(contact_info, user_data['sender'], phone_id)
             send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
