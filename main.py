@@ -58,11 +58,11 @@ class FreshCreamOptions(Enum):
     CAKE_FAIRY = "Cake Fairy Cake - $20"
     DOUBLE_DELITE = "Double Delite (2 flavours) - +$5"
     TRIPLE_DELITE = "Triple Delite (3 flavours) - +$10"
-    SMALL = "Small (6 inch) - $30"
-    LARGE = "Large (8 inch 3 layers or 7 inch 4 layers) - $40"
-    LARGE_10 = "Large (10 inch 2 layers) - $60"
-    XL = "Extra Large (10 inch 3 layers) - $80"
-    EXTRA_TALL = "Extra Tall Cake (7 inch or 8 inch) - $65"
+    SMALL = "Small - $30"
+    LARGE = "Large - $40"
+    LARGE_10 = "Large - $60"
+    XL = "Extra Large - $80"
+    EXTRA_TALL = "Extra Tall Cake - $65"
     BACK = "Back to cake types"
 
 class TierCakesOptions(Enum):
@@ -96,10 +96,10 @@ class FruitCakeOptions(Enum):
     BACK = "Back to cake types"
 
 class PlasticIcingOptions(Enum):
-    SMALL = "Small (6 inch) - $40"
-    MEDIUM = "Medium (8 inch) - $50"
-    LARGE = "Large (10 inch 2 layers) - $70"
-    XL = "Extra Large (10 inch 3 layers) - $100"
+    SMALL = "Small - $40"
+    MEDIUM = "Medium - $50"
+    LARGE = "Large - $70"
+    XL = "Extra Large - $100"
     BACK = "Back to cake types"
 
 class OrderOptions(Enum):
@@ -1187,10 +1187,19 @@ Please visit www.cakefairy1.com for terms and conditions.
 *Phone:* {user.phone}
 *Email:* {user.email}
 *Item:* {user_data.get('selected_item', 'Custom Cake')}
-*Due Date:* {user.due_date} at {user.due_time}
 *Theme:* {user.theme}
+*Flavor:* {user.flavor}
+*Filling:* {user.filling}
+*Icing:* {user.icing}
+*Shape:* {user.shape}
+*Due Date:* {user.due_date}
+*Due Time:* {user.due_time}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Referral Source:* {user.referral_source}
+*Special Requests:* {user.special_requests}
+*Payment:* {user.payment_method}
 
-Please check the order system for details.
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
@@ -1277,13 +1286,13 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 💰 *Fresh Cream Cakes Pricing* 💰
 
 • Cake Fairy Cake - $20
-• Double Delite (2 flavours) - Additional $5
-• Triple Delite (3 flavours) - Additional $10
-• Small (6 inch) - $30
-• Large (8 inch 3 layers or 7 inch 4 layers) - $40
-• Large (10 inch 2 layers) - $60
-• Extra Large (10 inch 3 layers) - $80
-• Extra Tall Cake (7 inch or 8 inch) - $65
+• Double Delite - Additional $5
+• Triple Delite - Additional $10
+• Small - $30
+• Large - $40
+• Large - $60
+• Extra Large - $80
+• Extra Tall Cake - $65
 
 *2-Tier Cakes:*
 • 4 inch + 6 inch - $60
@@ -1315,10 +1324,10 @@ def handle_pricing_menu(prompt, user_data, phone_id):
             pricing_msg = """
 💰 *Plastic Icing Cakes Pricing* 💰
 
-• Small (6 inch) - $40
-• Medium (8 inch) - $50
-• Large (10 inch 2 layers) - $70
-• Extra Large (10 inch 3 layers) - $100
+• Small - $40
+• Medium - $50
+• Large - $70
+• Extra Large - $100
             """
             
         send_message(pricing_msg, user_data['sender'], phone_id)
