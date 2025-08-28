@@ -17,7 +17,7 @@ wa_token = os.environ.get("WA_TOKEN")
 phone_id = os.environ.get("PHONE_ID")
 redis_url = os.environ.get("REDIS_URL")
 owner_phone = os.environ.get("OWNER_PHONE")
-AGENT_NUMBERS = ["+263785019494"]
+AGENT_NUMBERS = ["+263772210415"]
 
 # Redis client setup
 redis_client = Redis(
@@ -58,11 +58,11 @@ class FreshCreamOptions(Enum):
     CAKE_FAIRY = "Cake Fairy Cake - $20"
     DOUBLE_DELITE = "Double Delite (2 flavours) - +$5"
     TRIPLE_DELITE = "Triple Delite (3 flavours) - +$10"
-    SMALL = "Small (6 inch) - $30"
-    LARGE = "Large (8 inch 3 layers or 7 inch 4 layers) - $40"
-    LARGE_10 = "Large (10 inch 2 layers) - $60"
-    XL = "Extra Large (10 inch 3 layers) - $80"
-    EXTRA_TALL = "Extra Tall Cake (7 inch or 8 inch) - $65"
+    SMALL = "Small - $30"
+    LARGE = "Large - $40"
+    LARGE_10 = "Large - $60"
+    XL = "Extra Large - $80"
+    EXTRA_TALL = "Extra Tall Cake - $65"
     BACK = "Back to cake types"
 
 class TierCakesOptions(Enum):
@@ -96,10 +96,10 @@ class FruitCakeOptions(Enum):
     BACK = "Back to cake types"
 
 class PlasticIcingOptions(Enum):
-    SMALL = "Small (6 inch) - $40"
-    MEDIUM = "Medium (8 inch) - $50"
-    LARGE = "Large (10 inch 2 layers) - $70"
-    XL = "Extra Large (10 inch 3 layers) - $100"
+    SMALL = "Small - $40"
+    MEDIUM = "Medium - $50"
+    LARGE = "Large - $70"
+    XL = "Extra Large - $100"
     BACK = "Back to cake types"
 
 class OrderOptions(Enum):
@@ -479,7 +479,7 @@ def send_list_message(text, options, recipient, phone_id):
 # Handlers
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
-        "🎂 *Welcome to Fresh Cream Cakes!* 🎂\n\n"
+        "🎂 *Welcome to Cake Fairy!* 🎂\n\n"
         "We create delicious, beautifully decorated cakes for all occasions.\n\n"
         "Please choose an option to continue:"
     )
@@ -629,7 +629,7 @@ def handle_cake_types_menu(prompt, user_data, phone_id):
             return {'step': 'plastic_icing_menu'}
             
         elif selected_option == CakeTypeOptions.BACK:
-            return ask_restart(user_data, phone_id)
+            return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_cake_types_menu: {e}")
@@ -649,7 +649,7 @@ def handle_fresh_cream_menu(prompt, user_data, phone_id):
             return {'step': 'fresh_cream_menu'}
             
         if selected_option == FreshCreamOptions.BACK:
-            return ask_restart(user_data, phone_id)
+            return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
             
         # For tier cakes, show tier options
         if selected_option in [FreshCreamOptions.SMALL, FreshCreamOptions.LARGE, 
@@ -733,7 +733,7 @@ def handle_tier_cakes_menu(prompt, user_data, phone_id):
             return {'step': 'tier_cakes_menu'}
             
         if selected_option == TierCakesOptions.BACK:
-            return ask_restart(user_data, phone_id)
+            return handle_fresh_cream_menu("", user_data, phone_id)
             
         if selected_option == TierCakesOptions.TWO_TIER:
             two_tier_msg = "Please select a 2-tier cake option:"
@@ -809,7 +809,7 @@ def handle_three_tier_menu(prompt, user_data, phone_id):
             return {'step': 'three_tier_menu'}
             
         if selected_option == ThreeTierOptions.BACK:
-            return ask_restart(user_data, phone_id)
+            return handle_tier_cakes_menu("", user_data, phone_id)
             
         send_message(
             f"You selected: {selected_option.value}\n\n"
@@ -841,7 +841,7 @@ def handle_fruit_cake_menu(prompt, user_data, phone_id):
             return {'step': 'fruit_cake_menu'}
             
         if selected_option == FruitCakeOptions.BACK:
-            return ask_restart(user_data, phone_id)
+            return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
             
         send_message(
             f"You selected: {selected_option.value}\n\n"
@@ -873,7 +873,7 @@ def handle_plastic_icing_menu(prompt, user_data, phone_id):
             return {'step': 'plastic_icing_menu'}
             
         if selected_option == PlasticIcingOptions.BACK:
-            return ask_restart(user_data, phone_id)
+            return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
             
         send_message(
             f"You selected: {selected_option.value}\n\n"
@@ -1187,15 +1187,25 @@ Please visit www.cakefairy1.com for terms and conditions.
 *Phone:* {user.phone}
 *Email:* {user.email}
 *Item:* {user_data.get('selected_item', 'Custom Cake')}
-*Due Date:* {user.due_date} at {user.due_time}
 *Theme:* {user.theme}
+*Flavor:* {user.flavor}
+*Filling:* {user.filling}
+*Icing:* {user.icing}
+*Shape:* {user.shape}
+*Due Date:* {user.due_date}
+*Due Time:* {user.due_time}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Referral Source:* {user.referral_source}
+*Special Requests:* {user.special_requests}
+*Payment:* {user.payment_method}
 
-Please check the order system for details.
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
-            # Ask to restart instead of sending menu immediately
-            return ask_restart(user_data, phone_id)
+            # Return to main menu
+            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+            return handle_welcome("", user_data, phone_id)
             
         else:
             # Restart order process
@@ -1250,8 +1260,9 @@ Please contact the customer for more details.
             """
             send_message(agent_msg, owner_phone, phone_id)
         
-        # Ask to restart instead of sending menu immediately
-        return ask_restart(user_data, phone_id)
+        # Return to main menu
+        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_cupcake_inquiry: {e}")
@@ -1275,13 +1286,13 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 💰 *Fresh Cream Cakes Pricing* 💰
 
 • Cake Fairy Cake - $20
-• Double Delite (2 flavours) - Additional $5
-• Triple Delite (3 flavours) - Additional $10
-• Small (6 inch) - $30
-• Large (8 inch 3 layers or 7 inch 4 layers) - $40
-• Large (10 inch 2 layers) - $60
-• Extra Large (10 inch 3 layers) - $80
-• Extra Tall Cake (7 inch or 8 inch) - $65
+• Double Delite - Additional $5
+• Triple Delite - Additional $10
+• Small - $30
+• Large - $40
+• Large - $60
+• Extra Large - $80
+• Extra Tall Cake - $65
 
 *2-Tier Cakes:*
 • 4 inch + 6 inch - $60
@@ -1313,10 +1324,10 @@ def handle_pricing_menu(prompt, user_data, phone_id):
             pricing_msg = """
 💰 *Plastic Icing Cakes Pricing* 💰
 
-• Small (6 inch) - $40
-• Medium (8 inch) - $50
-• Large (10 inch 2 layers) - $70
-• Extra Large (10 inch 3 layers) - $100
+• Small - $40
+• Medium - $50
+• Large - $70
+• Extra Large - $100
             """
             
         send_message(pricing_msg, user_data['sender'], phone_id)
@@ -1357,7 +1368,7 @@ def handle_pricing_order_decision(prompt, user_data, phone_id):
             else:
                 return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
         else:
-            return ask_restart(user_data, phone_id)
+            return handle_main_menu("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_pricing_order_decision: {e}")
@@ -1403,10 +1414,11 @@ We're located at:
 [Your business address]
             """
             send_message(contact_info, user_data['sender'], phone_id)
-            return ask_restart(user_data, phone_id)
+            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+            return handle_welcome("", user_data, phone_id)
             
         elif selected_option == ContactOptions.BACK:
-            return ask_restart(user_data, phone_id)
+            return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_contact_menu: {e}")
@@ -1445,8 +1457,9 @@ Please contact the customer as soon as possible.
             """
             send_message(agent_msg, owner_phone, phone_id)
         
-        # Ask to restart instead of sending menu immediately
-        return ask_restart(user_data, phone_id)
+        # Return to main menu
+        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_callback_request: {e}")
@@ -1478,7 +1491,7 @@ def handle_order_menu(prompt, user_data, phone_id):
             return {'step': 'check_existing_order'}
             
         elif selected_option == OrderOptions.BACK:
-            return ask_restart(user_data, phone_id)
+            return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_order_menu: {e}")
@@ -1574,8 +1587,9 @@ For more details or to make changes, please contact us directly.
                 phone_id
             )
         
-        # Ask to restart instead of sending menu immediately
-        return ask_restart(user_data, phone_id)
+        # Return to main menu
+        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_check_existing_order: {e}")
@@ -1615,12 +1629,8 @@ Please contact the customer as soon as possible.
             """
             send_message(agent_msg, owner_phone, phone_id)
         
-        # Put both sides into agent chat mode
-        update_user_state(user_data['sender'], {'step': 'agent_chat', 'agent_session': request_id})
-        # Also mark agent side with a mapping so we can route replies (using owner's phone)
-        if owner_phone:
-            redis_client.setex(f"agent_session:{owner_phone}", 3600, json.dumps({'customer': user_data['sender'], 'session': request_id}))
-        return {'step': 'agent_chat', 'agent_session': request_id}
+        update_user_state(user_data['sender'], {'step': 'waiting_for_agent'})
+        return {'step': 'waiting_for_agent'}
             
     except Exception as e:
         logging.error(f"Error in human_agent: {e}")
@@ -1651,29 +1661,6 @@ def handle_waiting_for_agent(prompt, user_data, phone_id):
         logging.error(f"Error in handle_waiting_for_agent: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
-
-# Ask to restart utility and handler
-def ask_restart(user_data, phone_id):
-    send_button_message(
-        "Would you like to start again from the main menu?",
-        [
-            {"id": "restart_yes", "title": "Yes, start again"},
-            {"id": "restart_no", "title": "No, thanks"}
-        ],
-        user_data['sender'],
-        phone_id
-    )
-    update_user_state(user_data['sender'], {'step': 'restart_decision'})
-    return {'step': 'restart_decision'}
-
-def handle_restart_decision(prompt, user_data, phone_id):
-    lower = prompt.lower()
-    if 'yes' in lower or 'restart_yes' in lower:
-        return handle_welcome("", user_data, phone_id)
-    else:
-        send_message("Okay. If you need anything else, just say 'menu' anytime.", user_data['sender'], phone_id)
-        update_user_state(user_data['sender'], {'step': 'welcome'})
-        return {'step': 'welcome'}
 
 # Main message handler
 def handle_message(prompt, user_data, phone_id):
@@ -1823,44 +1810,6 @@ Please confirm if this order is correct.
             
         elif current_step == 'waiting_for_agent':
             return handle_waiting_for_agent(prompt, user_data, phone_id)
-
-        elif current_step == 'restart_decision':
-            return handle_restart_decision(prompt, user_data, phone_id)
-        
-        elif current_step == 'agent_chat':
-            # Forward messages both ways until agent sends 'exit'
-            # If the owner sends 'exit', end the session
-            sender_phone = user_data.get('sender')
-            text = prompt
-            if owner_phone and sender_phone == owner_phone:
-                # message from agent -> forward to customer
-                # Check exit
-                if text.strip().lower() == 'exit':
-                    send_message("Agent chat ended.", owner_phone, phone_id)
-                    # Clear agent session mapping
-                    sess = redis_client.get(f"agent_session:{owner_phone}")
-                    if sess:
-                        try:
-                            sess_obj = json.loads(sess)
-                            customer_phone = sess_obj.get('customer')
-                            update_user_state(customer_phone, {'step': 'welcome'})
-                        except Exception:
-                            pass
-                    redis_client.delete(f"agent_session:{owner_phone}")
-                    return handle_welcome("", {'sender': owner_phone}, phone_id)
-                else:
-                    sess = redis_client.get(f"agent_session:{owner_phone}")
-                    if sess:
-                        sess_obj = json.loads(sess)
-                        customer_phone = sess_obj.get('customer')
-                        send_message(f"Agent: {text}", customer_phone, phone_id)
-                        return {'step': 'agent_chat'}
-                    return {'step': 'agent_chat'}
-            else:
-                # message from customer -> forward to agent
-                if owner_phone:
-                    send_message(f"Customer {sender_phone}: {text}", owner_phone, phone_id)
-                return {'step': 'agent_chat'}
             
         else:
             # Default fallback
