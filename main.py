@@ -643,7 +643,7 @@ def handle_restart_confirmation(prompt, user_data, phone_id):
         # Initial entry or unrecognized input -> show Yes/No buttons
         if text == "" or text in ["restart", "start", "menu"]:
             send_button_message(
-                "Would you like to go back to main menu?",
+                "Is there anything else I can help you with?",
                 [
                     {"id": "restart_yes", "title": "Yes"},
                     {"id": "restart_no", "title": "No"}
@@ -666,7 +666,7 @@ def handle_restart_confirmation(prompt, user_data, phone_id):
 
         # Any other input -> re-send buttons
         send_button_message(
-            "Please confirm: would you like to restart with the bot?",
+            "Is there anything else I can help you with?",
             [
                 {"id": "restart_yes", "title": "Yes"},
                 {"id": "restart_no", "title": "No"}
@@ -1248,8 +1248,7 @@ Please visit www.cakefairy1.com for terms and conditions.
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
-            # Return to main menu
-            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+            # Ask if they need anything else (Yes/No)
             return restart_confirmation("", user_data, phone_id)
             
         else:
@@ -1305,8 +1304,7 @@ Please contact the customer for more details.
             """
             send_message(agent_msg, owner_phone, phone_id)
         
-        # Return to main menu
-        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        # Ask if they need anything else (Yes/No)
         return restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
@@ -1459,7 +1457,6 @@ We're located at:
 [Your business address]
             """
             send_message(contact_info, user_data['sender'], phone_id)
-            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
             return restart_confirmation("", user_data, phone_id)
             
         elif selected_option == ContactOptions.BACK:
@@ -1502,8 +1499,7 @@ Please contact the customer as soon as possible.
             """
             send_message(agent_msg, owner_phone, phone_id)
         
-        # Return to main menu
-        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        # Ask if they need anything else (Yes/No)
         return restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
@@ -1632,8 +1628,7 @@ For more details or to make changes, please contact us directly.
                 phone_id
             )
         
-        # Return to main menu
-        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        # Ask if they need anything else (Yes/No)
         return restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
