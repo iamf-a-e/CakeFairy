@@ -629,7 +629,7 @@ def handle_cake_types_menu(prompt, user_data, phone_id):
             return {'step': 'plastic_icing_menu'}
             
         elif selected_option == CakeTypeOptions.BACK:
-            return restart_confirmation("", user_data, phone_id)
+            return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_cake_types_menu: {e}")
@@ -1249,7 +1249,7 @@ Please visit www.cakefairy1.com for terms and conditions.
                 send_message(agent_notification, owner_phone, phone_id)
             
             # Ask if they need anything else (Yes/No)
-            return restart_confirmation("", user_data, phone_id)
+            return handle_restart_confirmation("", user_data, phone_id)
             
         else:
             # Restart order process
@@ -1305,7 +1305,7 @@ Please contact the customer for more details.
             send_message(agent_msg, owner_phone, phone_id)
         
         # Ask if they need anything else (Yes/No)
-        return restart_confirmation("", user_data, phone_id)
+        return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_cupcake_inquiry: {e}")
@@ -1457,7 +1457,7 @@ We're located at:
 [Your business address]
             """
             send_message(contact_info, user_data['sender'], phone_id)
-            return restart_confirmation("", user_data, phone_id)
+            return handle_restart_confirmation("", user_data, phone_id)
             
         elif selected_option == ContactOptions.BACK:
             return handle_welcome("", user_data, phone_id)
@@ -1500,7 +1500,7 @@ Please contact the customer as soon as possible.
             send_message(agent_msg, owner_phone, phone_id)
         
         # Ask if they need anything else (Yes/No)
-        return restart_confirmation("", user_data, phone_id)
+        return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_callback_request: {e}")
@@ -1532,7 +1532,7 @@ def handle_order_menu(prompt, user_data, phone_id):
             return {'step': 'check_existing_order'}
             
         elif selected_option == OrderOptions.BACK:
-            return restart_confirmation("", user_data, phone_id)
+            return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_order_menu: {e}")
@@ -1629,7 +1629,7 @@ For more details or to make changes, please contact us directly.
             )
         
         # Ask if they need anything else (Yes/No)
-        return restart_confirmation("", user_data, phone_id)
+        return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_check_existing_order: {e}")
