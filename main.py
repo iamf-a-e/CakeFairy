@@ -1138,7 +1138,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'referral',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("How did you hear about us? (e.g., Facebook, friend, Google):", user_data['sender'], phone_id)
+            send_message("How did you hear about us? (e.g., Facebook, Friend, Google):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
