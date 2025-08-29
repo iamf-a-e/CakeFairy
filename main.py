@@ -1734,6 +1734,15 @@ def handle_message(prompt, user_data, phone_id):
         # Check for explicit restart commands (exact match only to avoid accidental triggers)
         if prompt_lower.strip() in {"restart", "start over", "main menu", "menu", "hie", "hey", "hi"}:
             return handle_welcome("", user_data, phone_id)
+
+        # If user is in agent handover mode, allow greeting phrases to restart the bot
+        try:
+            import re
+            greeting_pattern = re.compile(r"^(hi|hey|hie|hello|good morning|good afternoon|good evening)\b", re.IGNORECASE)
+            if user_data.get('step') == 'waiting_for_agent' and greeting_pattern.search(prompt.strip()):
+                return handle_welcome("", user_data, phone_id)
+        except Exception:
+            pass
             
         # Check for agent request at any point
         if any(word in prompt_lower for word in ["agent", "human", "representative", "speak to someone"]):
