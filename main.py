@@ -1003,7 +1003,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What flavor would you like? (e.g., chocolate, vanilla, lemon, orange or strawberry). The pricing is for 1 flavor, 2 flavors attract an additional $5", user_data['sender'], phone_id)
+            send_message("What flavor would you like? (e.g., chocolate, vanilla, lemon, orange or strawberry).\nN.B. The pricing is for 1 flavor, 2 flavors attract an additional $5", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1018,7 +1018,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'filling',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What filling would you like? (e.g., cream, fruit, chocolate ganache):", user_data['sender'], phone_id)
+            send_message("What filling would you like? (e.g. fresh cream, fruit, chocolate ganache).\nN.B. Fresh cream is the default filling for all $20 cakes.", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1348,12 +1348,7 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 • 4 inch + 6 inch + 8 inch - $140
 • 5 inch + 7 inch + 9 inch - $170
 • 6 inch + 8 inch + 10 inch - $210
-
-*Additional Options:*
-• Fondant - Additional $20
-• Ganache - Additional $10
-• SMBC - Additional $15
-            """
+"""
             
         elif selected_option == CakeTypeOptions.FRUIT:
             pricing_msg = """
