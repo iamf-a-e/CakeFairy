@@ -1003,7 +1003,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What flavor would you like? (e.g., chocolate, vanilla, lemon, orange or strawberry).\nN.B. The pricing is for 1 flavor, 2 flavors attract an additional $5", user_data['sender'], phone_id)
+            send_message("What flavor would you like? (e.g., chocolate, vanilla, red velvet):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1018,7 +1018,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'filling',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What filling would you like? (e.g. fresh cream, fruit, chocolate ganache).\nN.B. Fresh cream is the default filling for all $20 cakes.", user_data['sender'], phone_id)
+            send_message("What filling would you like? (e.g., cream, fruit, chocolate ganache):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1348,7 +1348,12 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 • 4 inch + 6 inch + 8 inch - $140
 • 5 inch + 7 inch + 9 inch - $170
 • 6 inch + 8 inch + 10 inch - $210
-"""
+
+*Additional Options:*
+• Fondant - Additional $20
+• Ganache - Additional $10
+• SMBC - Additional $15
+            """
             
         elif selected_option == CakeTypeOptions.FRUIT:
             pricing_msg = """
@@ -1635,7 +1640,7 @@ def human_agent(prompt, user_data, phone_id):
     try:
         send_message(
             "You've requested to speak with a human agent. "
-            "We have handed your chat over to a human. "
+            "One of our team members will contact you shortly. "
             "Please provide a brief description of what you need help with:",
             user_data['sender'],
             phone_id
@@ -1663,23 +1668,6 @@ def human_agent(prompt, user_data, phone_id):
 Please contact the customer as soon as possible.
             """
             send_message(agent_msg, owner_phone, phone_id)
-            # Inform the agent about controls
-            send_message(
-                f"You are now chatting with customer {user_data['sender']}. "
-                f"Reply in this chat to message them. Send 'Exit' to hand back to the bot.",
-                owner_phone,
-                phone_id
-            )
-
-            # Map this agent to the active customer for direct replies
-            try:
-                redis_client.setex(
-                    f"agent_active_customer:{normalize_phone_number(owner_phone)}",
-                    21600,  # 6 hours
-                    normalize_phone_number(user_data['sender'])
-                )
-            except Exception:
-                pass
         
         update_user_state(user_data['sender'], {'step': 'waiting_for_agent'})
         return {'step': 'waiting_for_agent'}
@@ -1698,10 +1686,11 @@ def handle_waiting_for_agent(prompt, user_data, phone_id):
 
 {prompt}
             """
-            send_message(forward_msg, owner_phone, phone_id)
-
+            send_message(forward_msg, user_data['sender'], phone_id)
+        
         send_message(
-            "Your message has been forwarded to our team.",
+            "Your message has been forwarded to our team. "
+            "We'll get back to you as soon as possible.",
             user_data['sender'],
             phone_id
         )
@@ -1734,15 +1723,6 @@ def handle_message(prompt, user_data, phone_id):
         # Check for explicit restart commands (exact match only to avoid accidental triggers)
         if prompt_lower.strip() in {"restart", "start over", "main menu", "menu", "hie", "hey", "hi"}:
             return handle_welcome("", user_data, phone_id)
-
-        # If user is in agent handover mode, allow greeting phrases to restart the bot
-        try:
-            import re
-            greeting_pattern = re.compile(r"^(hi|hey|hie|hello|good morning|good afternoon|good evening)\b", re.IGNORECASE)
-            if user_data.get('step') == 'waiting_for_agent' and greeting_pattern.search(prompt.strip()):
-                return handle_welcome("", user_data, phone_id)
-        except Exception:
-            pass
             
         # Check for agent request at any point
         if any(word in prompt_lower for word in ["agent", "human", "representative", "speak to someone"]):
@@ -1948,102 +1928,6 @@ def webhook():
 
                                 if incoming_text is not None:
                                     print(f"Processing message from {sender}: {incoming_text}")
-
-                                    # If message is from an agent, route to the mapped customer
-                                    try:
-                                        normalized_sender = normalize_phone_number(sender)
-                                    except Exception:
-                                        normalized_sender = sender
-
-                                    try:
-                                        is_agent_sender = False
-                                        if 'AGENT_NUMBERS' in globals() and isinstance(AGENT_NUMBERS, list):
-                                            is_agent_sender = normalized_sender in [normalize_phone_number(p) for p in AGENT_NUMBERS]
-                                        if not is_agent_sender and 'owner_phone' in globals() and owner_phone:
-                                            is_agent_sender = normalized_sender == normalize_phone_number(owner_phone)
-                                    except Exception:
-                                        is_agent_sender = False
-
-                                    if is_agent_sender:
-                                        text_lower = incoming_text.strip().lower()
-                                        # Handle Exit from agent: hand back to bot
-                                        if text_lower == 'exit':
-                                            try:
-                                                active_customer = redis_client.get(f"agent_active_customer:{normalized_sender}")
-                                                if active_customer:
-                                                    active_customer = active_customer.decode() if isinstance(active_customer, (bytes, bytearray)) else active_customer
-                                                    # Notify both parties
-                                                    send_message(
-                                                        "The chat has been handed back to the bot. We'll continue from here.",
-                                                        active_customer,
-                                                        phone_id
-                                                    )
-                                                    send_message(
-                                                        f"Chat with {active_customer} has been handed back to the bot.",
-                                                        normalized_sender,
-                                                        phone_id
-                                                    )
-                                                    # Reset customer state to main menu/welcome
-                                                    update_user_state(active_customer, {'step': 'welcome'})
-                                                else:
-                                                    send_message("No active customer mapped. Nothing to hand over.", normalized_sender, phone_id)
-                                            except Exception as e:
-                                                print(f"Error handing back to bot: {e}")
-                                            finally:
-                                                try:
-                                                    redis_client.delete(f"agent_active_customer:{normalized_sender}")
-                                                except Exception:
-                                                    pass
-                                            return jsonify({'status': 'success'}), 200
-
-                                        # Determine target customer: explicit phone in message or active mapping
-                                        target_customer = None
-                                        try:
-                                            # Look for a phone number pattern in message
-                                            import re
-                                            phone_match = re.search(r"(\+?\d{10,15})", incoming_text)
-                                            if phone_match:
-                                                target_customer = normalize_phone_number(phone_match.group(1))
-                                                # Strip the phone from the outbound message
-                                                outbound_text = incoming_text.replace(phone_match.group(1), '').strip()
-                                            else:
-                                                outbound_text = incoming_text
-                                        except Exception:
-                                            outbound_text = incoming_text
-
-                                        if not target_customer:
-                                            try:
-                                                mapped = redis_client.get(f"agent_active_customer:{normalized_sender}")
-                                                if mapped:
-                                                    target_customer = mapped.decode() if isinstance(mapped, (bytes, bytearray)) else mapped
-                                            except Exception:
-                                                target_customer = None
-
-                                        if not target_customer:
-                                            send_message(
-                                                "No active customer found. Include the customer's phone number in your first message (e.g., +2637... Hello).",
-                                                normalized_sender,
-                                                phone_id
-                                            )
-                                        else:
-                                            # Persist mapping for subsequent messages
-                                            try:
-                                                redis_client.setex(
-                                                    f"agent_active_customer:{normalized_sender}",
-                                                    21600,
-                                                    target_customer
-                                                )
-                                            except Exception:
-                                                pass
-
-                                            # Forward agent's message only to the customer
-                                            send_message(outbound_text, target_customer, phone_id)
-                                            # Confirm to agent (optional minimal ack)
-                                            send_message("Sent to customer.", normalized_sender, phone_id)
-
-                                        return jsonify({'status': 'success'}), 200
-
-                                    # Non-agent senders follow normal bot flow
                                     user_data_obj = get_user_state(sender)
                                     print(f"User state: {user_data_obj}")
                                     new_state = handle_message(incoming_text, user_data_obj, phone_id)
