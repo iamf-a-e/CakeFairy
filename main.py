@@ -1734,8 +1734,8 @@ def get_customer_for_agent(agent_phone):
     This could be stored in a database, cache, or session storage.
     """
     # Implementation depends on your storage system
-    # Example: return redis.get(f"agent_{agent_phone}_customer")
-    pass
+    return redis.get(f"agent_{agent_phone}_customer")
+    
 
 def store_customer_waiting(customer_phone):
     """
@@ -1743,8 +1743,8 @@ def store_customer_waiting(customer_phone):
     You might want to store which agent is assigned, timestamp, etc.
     """
     # Implementation depends on your storage system
-    # Example: redis.set(f"waiting_customer_{customer_phone}", "waiting")
-    pass
+    redis.set(f"waiting_customer_{customer_phone}", "waiting")
+    return
 
 # Main message handler
 def handle_message(prompt, user_data, phone_id):
