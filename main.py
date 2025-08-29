@@ -1003,7 +1003,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What flavor would you like? (e.g., chocolate, vanilla, red velvet):", user_data['sender'], phone_id)
+            send_message("What flavor would you like? (e.g., chocolate, vanilla, lemon, orange or strawberry). The pricing is for 1 flavor, 2 flavors attract an additional $5", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
