@@ -1686,7 +1686,7 @@ def handle_waiting_for_agent(prompt, user_data, phone_id):
 
 {prompt}
             """
-            send_message(forward_msg, user_data['sender'], phone_id)
+            send_message(forward_msg, owner_phone, phone_id)
         
         send_message(
             "Your message has been forwarded to our team. "
