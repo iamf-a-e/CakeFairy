@@ -629,56 +629,11 @@ def handle_cake_types_menu(prompt, user_data, phone_id):
             return {'step': 'plastic_icing_menu'}
             
         elif selected_option == CakeTypeOptions.BACK:
-            return handle_restart_confirmation("", user_data, phone_id)
+            return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_cake_types_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
-        return {'step': 'welcome'}
-
-def handle_restart_confirmation(prompt, user_data, phone_id):
-    try:
-        text = (prompt or "").strip().lower()
-
-        # Initial entry or unrecognized input -> show Yes/No buttons
-        if text == "" or text in ["restart", "start", "menu"]:
-            send_button_message(
-                "Is there anything else I can help you with?",
-                [
-                    {"id": "restart_yes", "title": "Yes"},
-                    {"id": "restart_no", "title": "No"}
-                ],
-                user_data['sender'],
-                phone_id
-            )
-            update_user_state(user_data['sender'], {'step': 'restart_confirmation'})
-            return {'step': 'restart_confirmation'}
-
-        # Positive confirmation -> go to welcome flow
-        if text in ["yes", "y", "restart_yes", "ok", "sure", "yeah", "yep"]:
-            return handle_welcome("", user_data, phone_id)
-
-        # Negative confirmation -> send goodbye and move to a neutral state
-        if text in ["no", "n", "restart_no", "nope", "nah"]:
-            send_message("Have a good day!", user_data['sender'], phone_id)
-            update_user_state(user_data['sender'], {'step': 'goodbye'})
-            return {'step': 'goodbye'}
-
-        # Any other input -> re-send buttons
-        send_button_message(
-            "Is there anything else I can help you with?",
-            [
-                {"id": "restart_yes", "title": "Yes"},
-                {"id": "restart_no", "title": "No"}
-            ],
-            user_data['sender'],
-            phone_id
-        )
-        return {'step': 'restart_confirmation'}
-
-    except Exception as e:
-        logging.error(f"Error in handle_restart_confirmation: {e}")
-        send_message("An error occurred. Returning to main menu.", user_data['sender'], phone_id)
         return {'step': 'welcome'}
 
 def handle_fresh_cream_menu(prompt, user_data, phone_id):
@@ -1138,7 +1093,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'referral',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("How did you hear about us? (e.g., Facebook, Friend, Google):", user_data['sender'], phone_id)
+            send_message("How did you hear about us? (e.g., Facebook, friend, Google):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1248,8 +1203,9 @@ Please visit www.cakefairy1.com for terms and conditions.
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
-            # Ask if they need anything else (Yes/No)
-            return handle_restart_confirmation("", user_data, phone_id)
+            # Return to main menu
+            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+            return handle_welcome("", user_data, phone_id)
             
         else:
             # Restart order process
@@ -1304,8 +1260,9 @@ Please contact the customer for more details.
             """
             send_message(agent_msg, owner_phone, phone_id)
         
-        # Ask if they need anything else (Yes/No)
-        return handle_restart_confirmation("", user_data, phone_id)
+        # Return to main menu
+        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_cupcake_inquiry: {e}")
@@ -1457,7 +1414,8 @@ We're located at:
 [Your business address]
             """
             send_message(contact_info, user_data['sender'], phone_id)
-            return handle_restart_confirmation("", user_data, phone_id)
+            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+            return handle_welcome("", user_data, phone_id)
             
         elif selected_option == ContactOptions.BACK:
             return handle_welcome("", user_data, phone_id)
@@ -1499,8 +1457,9 @@ Please contact the customer as soon as possible.
             """
             send_message(agent_msg, owner_phone, phone_id)
         
-        # Ask if they need anything else (Yes/No)
-        return handle_restart_confirmation("", user_data, phone_id)
+        # Return to main menu
+        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_callback_request: {e}")
@@ -1532,7 +1491,7 @@ def handle_order_menu(prompt, user_data, phone_id):
             return {'step': 'check_existing_order'}
             
         elif selected_option == OrderOptions.BACK:
-            return handle_restart_confirmation("", user_data, phone_id)
+            return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_order_menu: {e}")
@@ -1628,8 +1587,9 @@ For more details or to make changes, please contact us directly.
                 phone_id
             )
         
-        # Ask if they need anything else (Yes/No)
-        return handle_restart_confirmation("", user_data, phone_id)
+        # Return to main menu
+        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
+        return handle_welcome("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_check_existing_order: {e}")
@@ -1720,8 +1680,8 @@ def handle_message(prompt, user_data, phone_id):
         except Exception:
             pass
         
-        # Check for explicit restart commands (exact match only to avoid accidental triggers)
-        if prompt_lower.strip() in {"restart", "start over", "main menu", "menu", "hie", "hey", "hi"}:
+        # Check for restart commands
+        if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu", "hie", "hey", "hi"]):
             return handle_welcome("", user_data, phone_id)
             
         # Check for agent request at any point
@@ -1733,18 +1693,6 @@ def handle_message(prompt, user_data, phone_id):
         
         if current_step == 'welcome':
             return handle_welcome(prompt, user_data, phone_id)
-        
-        elif current_step == 'goodbye':
-            # Stay idle after saying goodbye; only react to explicit restart/menu/agent keywords
-            if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu", "hi", "hey", "hie"]):
-                return handle_welcome("", user_data, phone_id)
-            if any(word in prompt_lower for word in ["agent", "human", "representative", "speak to someone"]):
-                return human_agent(prompt, user_data, phone_id)
-            send_message("If you need anything else later, just say 'menu' to start again.", user_data['sender'], phone_id)
-            return {'step': 'goodbye'}
-
-        elif current_step == 'restart_confirmation':
-            return handle_restart_confirmation(prompt, user_data, phone_id)
             
         elif current_step == 'main_menu':
             return handle_main_menu(prompt, user_data, phone_id)
