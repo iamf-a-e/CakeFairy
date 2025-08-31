@@ -497,6 +497,11 @@ def handle_welcome(prompt, user_data, phone_id):
 
 def handle_main_menu(prompt, user_data, phone_id):
     try:
+        # Check if this is an agent and show agent-specific options
+        if user_data['sender'] in AGENT_NUMBERS:
+            # Show agent-specific main menu
+            return handle_agent_main_menu(prompt, user_data, phone_id)
+        
         selected_option = None
         for option in MainMenuOptions:
             if prompt.lower() in option.value.lower():
@@ -579,6 +584,182 @@ def handle_main_menu(prompt, user_data, phone_id):
         logging.error(f"Error in handle_main_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'welcome'}
+
+def handle_agent_main_menu(prompt, user_data, phone_id):
+    try:
+        # Check for specific agent commands
+        if prompt.lower() in ['view requests', 'requests', 'customers', 'pending']:
+            # Show available customer requests
+            return show_available_requests(user_data, phone_id)
+        elif prompt.lower().startswith('start '):
+            # Agent wants to start conversation with specific customer
+            customer_phone = prompt[6:].strip()  # Remove 'start ' prefix
+            if customer_phone:
+                if start_agent_conversation(user_data['sender'], customer_phone, phone_id):
+                    return {'step': 'waiting_for_agent'}
+                else:
+                    send_message(f"❌ Could not start conversation with {customer_phone}. Customer may not be waiting for an agent.", user_data['sender'], phone_id)
+                    return {'step': 'main_menu'}
+            else:
+                send_message("Please specify a customer phone number: 'start +1234567890'", user_data['sender'], phone_id)
+                return {'step': 'main_menu'}
+        elif prompt.lower() in ['help', 'commands']:
+            # Show available commands
+            help_msg = """
+👨‍💼 *AGENT COMMANDS* 👩‍💼
+
+Available commands:
+• 'view requests' - See pending customer requests
+• 'start +1234567890' - Start conversation with specific customer
+• 'help' - Show this help message
+• 'menu' - Show regular menu options
+
+To start a conversation with a customer, use 'view requests' to see available requests or 'start +1234567890' to connect directly.
+            """
+            send_message(help_msg, user_data['sender'], phone_id)
+            return {'step': 'main_menu'}
+        elif prompt.lower() in ['menu', 'regular menu']:
+            # Show regular menu options
+            return handle_regular_menu_for_agent(user_data, phone_id)
+        else:
+            # Show agent main menu
+            agent_menu_msg = """
+👨‍💼 *AGENT MAIN MENU* 👩‍💼
+
+Welcome! You can:
+• Type 'view requests' to see pending customer requests
+• Type 'start +1234567890' to connect with a specific customer
+• Type 'help' for available commands
+• Type 'menu' to see regular menu options
+
+What would you like to do?
+            """
+            send_message(agent_menu_msg, user_data['sender'], phone_id)
+            return {'step': 'main_menu'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_agent_main_menu: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def show_available_requests(user_data, phone_id):
+    try:
+        # Get all agent requests from Redis
+        all_keys = redis_client.keys("agent_request:*")
+        pending_requests = []
+        
+        for key in all_keys:
+            try:
+                request_data = json.loads(redis_client.get(key))
+                if request_data:
+                    pending_requests.append(request_data)
+            except Exception:
+                continue
+        
+        if not pending_requests:
+            send_message("No pending customer requests at the moment.", user_data['sender'], phone_id)
+            return {'step': 'main_menu'}
+        
+        # Show available requests
+        requests_msg = f"""
+📋 *PENDING CUSTOMER REQUESTS* 📋
+
+Found {len(pending_requests)} pending request(s):
+        """
+        
+        for i, request in enumerate(pending_requests[:5], 1):  # Show max 5 requests
+            requests_msg += f"""
+{i}. *Customer:* {request.get('phone', 'Unknown')}
+   *Message:* {request.get('initial_message', 'No message')[:100]}...
+   *Time:* {request.get('timestamp', 'Unknown')}
+        """
+        
+        requests_msg += """
+To start a conversation with a customer, use 'start +1234567890' with their phone number.
+        """
+        
+        send_message(requests_msg, user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+        
+    except Exception as e:
+        logging.error(f"Error in show_available_requests: {e}")
+        send_message("An error occurred while fetching requests. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def handle_regular_menu_for_agent(user_data, phone_id):
+    try:
+        # Show regular menu options to agent
+        regular_menu_msg = """
+🍰 *REGULAR MENU OPTIONS* 🍰
+
+Available options:
+• View Cake Options
+• Cupcakes
+• Place an Order
+• Pricing Information
+• Contact Us
+• Speak to an Agent
+
+Note: As an agent, you can also use 'view requests' to see pending customer requests.
+        """
+        send_message(regular_menu_msg, user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+        
+    except Exception as e:
+        logging.error(f"Error in handle_regular_menu_for_agent: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def start_agent_conversation(agent_phone, customer_phone, phone_id):
+    try:
+        # Check if customer is in waiting_for_agent state
+        customer_state = get_user_state(customer_phone)
+        if customer_state.get('step') == 'waiting_for_agent':
+            # Update agent state to include customer
+            update_user_state(agent_phone, {
+                'step': 'waiting_for_agent',
+                'customer_phone': customer_phone
+            })
+            
+            # Update customer state to include agent
+            update_user_state(customer_phone, {
+                'step': 'waiting_for_agent',
+                'agent_phone': agent_phone
+            })
+            
+            # Store agent-customer relationship in Redis
+            agent_customer_data = {
+                'agent_phone': agent_phone,
+                'customer_phone': customer_phone,
+                'timestamp': datetime.now().isoformat()
+            }
+            redis_client.setex(f"agent_customer:{agent_phone}", 3600, json.dumps(agent_customer_data))
+            
+            # Notify both parties
+            agent_msg = f"""
+✅ *Conversation Started*
+
+You are now in conversation with {customer_phone}.
+Type your messages and they will be forwarded to the customer.
+Type 'exit' to end the conversation and handover back to the bot.
+            """
+            send_message(agent_msg, agent_phone, phone_id)
+            
+            customer_msg = f"""
+👨‍💼 *Agent Connected*
+
+Our team member is now available to help you.
+You can continue the conversation - all messages will be forwarded to our team.
+            """
+            send_message(customer_msg, customer_phone, phone_id)
+            
+            return True
+        else:
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error starting agent conversation: {e}")
+        return False
 
 def handle_cake_types_menu(prompt, user_data, phone_id):
     try:
@@ -1656,7 +1837,7 @@ def human_agent(prompt, user_data, phone_id):
         request_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         redis_client.setex(f"agent_request:{request_id}", 3600, json.dumps(agent_request))  # 1 hour expiration
         
-        # Notify agent/owner
+        # Notify agent/owner and put agent in waiting_for_agent state
         if owner_phone:
             agent_msg = f"""
 👨‍💼 *HUMAN AGENT REQUEST* 👩‍💼
@@ -1668,8 +1849,20 @@ def human_agent(prompt, user_data, phone_id):
 Please contact the customer as soon as possible.
             """
             send_message(agent_msg, owner_phone, phone_id)
+            
+            # Put agent in waiting_for_agent state
+            update_user_state(owner_phone, {'step': 'waiting_for_agent', 'customer_phone': user_data['sender']})
+            
+            # Store agent-customer relationship in Redis
+            agent_customer_data = {
+                'agent_phone': owner_phone,
+                'customer_phone': user_data['sender'],
+                'request_id': request_id,
+                'timestamp': datetime.now().isoformat()
+            }
+            redis_client.setex(f"agent_customer:{owner_phone}", 3600, json.dumps(agent_customer_data))
         
-        update_user_state(user_data['sender'], {'step': 'waiting_for_agent'})
+        update_user_state(user_data['sender'], {'step': 'waiting_for_agent', 'agent_phone': owner_phone})
         return {'step': 'waiting_for_agent'}
             
     except Exception as e:
@@ -1679,27 +1872,112 @@ Please contact the customer as soon as possible.
 
 def handle_waiting_for_agent(prompt, user_data, phone_id):
     try:
-        # Forward message to agent
-        if owner_phone:
-            forward_msg = f"""
+        # Check if this is a message from an agent
+        if user_data['sender'] in AGENT_NUMBERS:
+            # Agent is sending a message
+            if prompt.lower().strip() == 'exit':
+                # Agent wants to exit - handover back to bot
+                return handle_agent_exit(user_data, phone_id)
+            else:
+                # Forward agent's message to customer
+                customer_phone = user_data.get('customer_phone')
+                if customer_phone:
+                    forward_msg = f"""
+👨‍💼 *Message from our team:*
+
+{prompt}
+                    """
+                    send_message(forward_msg, customer_phone, phone_id)
+                    
+                    # Confirm to agent that message was sent
+                    send_message("✅ Your message has been forwarded to the customer.", user_data['sender'], phone_id)
+                else:
+                    send_message("❌ No customer found for this conversation.", user_data['sender'], phone_id)
+                
+                return {'step': 'waiting_for_agent'}
+        else:
+            # Customer is sending a message - forward to agent
+            agent_phone = user_data.get('agent_phone')
+            if agent_phone:
+                forward_msg = f"""
 📩 *Message from customer {user_data['sender']}:*
 
 {prompt}
-            """
-            send_message(forward_msg, owner_phone, phone_id)
-        
-        send_message(
-            "Your message has been forwarded to our team. "
-            "We'll get back to you as soon as possible.",
-            user_data['sender'],
-            phone_id
-        )
-        
-        return {'step': 'waiting_for_agent'}
+                """
+                send_message(forward_msg, agent_phone, phone_id)
+            else:
+                # Fallback to owner_phone if agent_phone not found
+                if owner_phone:
+                    forward_msg = f"""
+📩 *Message from customer {user_data['sender']}:*
+
+{prompt}
+                    """
+                    send_message(forward_msg, owner_phone, phone_id)
+            
+            send_message(
+                "Your message has been forwarded to our team. "
+                "We'll get back to you as soon as possible.",
+                user_data['sender'],
+                phone_id
+            )
+            
+            # Return the same state to keep customer in waiting_for_agent
+            # This prevents the message from being processed further
+            return {'step': 'waiting_for_agent'}
             
     except Exception as e:
         logging.error(f"Error in handle_waiting_for_agent: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+def handle_agent_exit(user_data, phone_id):
+    try:
+        # Get customer phone from agent's state
+        customer_phone = user_data.get('customer_phone')
+        
+        if customer_phone:
+            # Notify customer that agent has left
+            customer_msg = f"""
+👋 *Agent Handover Complete*
+
+Our team member has completed the conversation. 
+You're now back with our automated assistant.
+
+How can I help you today?
+            """
+            send_message(customer_msg, customer_phone, phone_id)
+            
+            # Reset customer state to main menu
+            update_user_state(customer_phone, {'step': 'main_menu'})
+            
+            # Notify agent that handover is complete
+            agent_msg = f"""
+✅ *Handover Complete*
+
+You have successfully handed over the conversation with {customer_phone} back to the bot.
+
+The customer has been notified and is now back in the main menu.
+            """
+            send_message(agent_msg, user_data['sender'], phone_id)
+            
+            # Reset agent state to main menu
+            update_user_state(user_data['sender'], {'step': 'main_menu'})
+            
+            # Clean up Redis data
+            try:
+                redis_client.delete(f"agent_customer:{user_data['sender']}")
+            except Exception:
+                pass
+            
+            return {'step': 'main_menu'}
+        else:
+            send_message("❌ No customer found for this conversation.", user_data['sender'], phone_id)
+            return {'step': 'main_menu'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_agent_exit: {e}")
+        send_message("An error occurred during handover. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
 
 # Main message handler
@@ -1720,6 +1998,24 @@ def handle_message(prompt, user_data, phone_id):
         except Exception:
             pass
         
+        # Get current step first
+        current_step = user_data.get('step', 'welcome')
+        
+        # Check if sender is an agent and handle their messages
+        if user_data['sender'] in AGENT_NUMBERS:
+            # Agent is sending a message - handle based on their current state
+            if current_step == 'waiting_for_agent':
+                return handle_waiting_for_agent(prompt, user_data, phone_id)
+            else:
+                # Agent not in waiting_for_agent state, send them to main menu
+                send_message("Welcome! You can start a conversation by responding to a customer's agent request.", user_data['sender'], phone_id)
+                return {'step': 'main_menu'}
+        
+        # If customer is in waiting_for_agent state, handle it immediately
+        if current_step == 'waiting_for_agent':
+            return handle_waiting_for_agent(prompt, user_data, phone_id)
+        
+        # Only check for global commands if not in special states
         # Check for explicit restart commands (exact match only to avoid accidental triggers)
         if prompt_lower.strip() in {"restart", "start over", "main menu", "menu", "hie", "hey", "hi"}:
             return handle_welcome("", user_data, phone_id)
@@ -1727,9 +2023,6 @@ def handle_message(prompt, user_data, phone_id):
         # Check for agent request at any point
         if any(word in prompt_lower for word in ["agent", "human", "representative", "speak to someone"]):
             return human_agent(prompt, user_data, phone_id)
-        
-        # Route based on current step
-        current_step = user_data.get('step', 'welcome')
         
         if current_step == 'welcome':
             return handle_welcome(prompt, user_data, phone_id)
