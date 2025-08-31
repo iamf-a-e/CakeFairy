@@ -1708,21 +1708,30 @@ def end_agent_session(customer, agent):
 
 # Main message handler
 def handle_message(prompt, user_data, phone_id):
-    # Check if this sender is an agent
-    if user_data["sender"] in AGENT_NUMBERS:
-        # Agent sending message
+    sender = user_data["sender"]
+
+    # ===== AGENT HANDLING =====
+    if sender in AGENT_NUMBERS:
         if user_data.get("step") == "agent_chat" and "customer" in user_data:
             customer = user_data["customer"]
             if prompt.lower().strip() == "exit":
-                end_agent_session(customer, user_data["sender"])
+                end_agent_session(customer, sender)
                 return {"step": "main_menu"}
             else:
+                # Forward agent message to customer
                 send_message(f"👨‍💼 Agent: {prompt}", customer, phone_id)
                 return user_data
         else:
-            # If agent replies outside a session
-            send_message("⚠️ No active customer session. Please wait for a request.", user_data["sender"], phone_id)
+            send_message("⚠️ No active customer session. Please wait for a request.", sender, phone_id)
             return user_data
+
+    # ===== CUSTOMER HANDLING =====
+    if user_data.get("step") == "agent_chat" and "agent" in user_data:
+        agent = user_data["agent"]
+        # Forward customer message to agent
+        send_message(f"🧑 Customer {sender}: {prompt}", agent, phone_id)
+        return user_data
+        
 
     try:
         print(f"Handling message: '{prompt}' for user: {user_data}")
