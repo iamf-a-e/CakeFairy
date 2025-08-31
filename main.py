@@ -17,7 +17,7 @@ wa_token = os.environ.get("WA_TOKEN")
 phone_id = os.environ.get("PHONE_ID")
 redis_url = os.environ.get("REDIS_URL")
 owner_phone = os.environ.get("OWNER_PHONE")
-AGENT_NUMBERS = ["+263785019494"]
+AGENT_NUMBERS = ["+263772210415"]
 
 # Redis client setup
 redis_client = Redis(
@@ -43,6 +43,11 @@ class MainMenuOptions(Enum):
     CONTACT = "Contact Us"
     AGENT = "Speak to an Agent"
 
+class PaymentOptions(Enum):
+    ECOCASH = "Ecocash"
+    INNBUCKS = "InnBucks"
+    OMARI = "Omari"
+
 class CakeTypeOptions(Enum):
     FRESH_CREAM = "Fresh Cream Cakes"
     FRUIT = "Fruit Cakes"
@@ -53,11 +58,11 @@ class FreshCreamOptions(Enum):
     CAKE_FAIRY = "Cake Fairy Cake - $20"
     DOUBLE_DELITE = "Double Delite (2 flavours) - +$5"
     TRIPLE_DELITE = "Triple Delite (3 flavours) - +$10"
-    SMALL = "Small (6 inch) - $30"
-    LARGE = "Large (8 inch 3 layers or 7 inch 4 layers) - $40"
-    LARGE_10 = "Large (10 inch 2 layers) - $60"
-    XL = "Extra Large (10 inch 3 layers) - $80"
-    EXTRA_TALL = "Extra Tall Cake (7 inch or 8 inch) - $65"
+    SMALL = "Small - $30"
+    LARGE = "Large - $40"
+    LARGE_10 = "Large - $60"
+    XL = "Extra Large - $80"
+    EXTRA_TALL = "Extra Tall Cake - $65"
     BACK = "Back to cake types"
 
 class TierCakesOptions(Enum):
@@ -91,10 +96,10 @@ class FruitCakeOptions(Enum):
     BACK = "Back to cake types"
 
 class PlasticIcingOptions(Enum):
-    SMALL = "Small (6 inch) - $40"
-    MEDIUM = "Medium (8 inch) - $50"
-    LARGE = "Large (10 inch 2 layers) - $70"
-    XL = "Extra Large (10 inch 3 layers) - $100"
+    SMALL = "Small - $40"
+    MEDIUM = "Medium - $50"
+    LARGE = "Large - $70"
+    XL = "Extra Large - $100"
     BACK = "Back to cake types"
 
 class OrderOptions(Enum):
@@ -126,6 +131,7 @@ class User:
         self.special_requests = None
         self.referral_source = None
         self.callback_requested = False
+        self.payment_method = None
 
     def to_dict(self):
         return {
@@ -145,7 +151,8 @@ class User:
             "colors": self.colors,
             "special_requests": self.special_requests,
             "referral_source": self.referral_source,
-            "callback_requested": self.callback_requested
+            "callback_requested": self.callback_requested,
+            "payment_method": self.payment_method
         }
 
     @classmethod
@@ -171,6 +178,7 @@ class User:
         user.special_requests = data.get("special_requests")
         user.referral_source = data.get("referral_source")
         user.callback_requested = data.get("callback_requested", False)
+        user.payment_method = data.get("payment_method")
         return user
 
 # Phone number normalization function
@@ -193,6 +201,18 @@ def normalize_phone_number(phone):
         return cleaned
 
 # Redis state functions
+def log_conversation(phone_number, direction, message_type, payload):
+    try:
+        log_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'direction': direction,  # 'in' or 'out' or 'state'
+            'type': message_type,    # 'text' | 'button' | 'list' | 'state' | 'raw'
+            'payload': payload,
+        }
+        redis_client.lpush(f"conversation:{phone_number}", json.dumps(log_entry))
+        redis_client.ltrim(f"conversation:{phone_number}", 0, 499)
+    except Exception as e:
+        logging.error(f"Failed to log conversation: {e}")
 def get_user_state(phone_number):
     state_json = redis_client.get(f"user_state:{phone_number}")
     if state_json:
@@ -216,6 +236,11 @@ def update_user_state(phone_number, updates):
     print(f"Final state to save: {current}")
     redis_client.setex(f"user_state:{phone_number}", 86400, json.dumps(current))
     print(f"State saved for {phone_number}")
+    # Log state snapshot
+    try:
+        log_conversation(phone_number, 'state', 'state', current)
+    except Exception:
+        pass
 
 def send_message(text, recipient, phone_id):
     url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
@@ -248,6 +273,11 @@ def send_message(text, recipient, phone_id):
     try:
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
+        # Log outgoing text
+        try:
+            log_conversation(recipient, 'out', 'text', {'text': text})
+        except Exception:
+            pass
     except requests.exceptions.RequestException as e:
         logging.error(f"Failed to send message: {e}")
 
@@ -353,6 +383,10 @@ def send_button_message(text, buttons, recipient, phone_id):
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
         print(f"Button message sent successfully to {recipient}")
+        try:
+            log_conversation(recipient, 'out', 'button', {'text': text, 'buttons': buttons})
+        except Exception:
+            pass
         return True
     except requests.exceptions.RequestException as e:
         logging.error(f"Failed to send button message: {e}")
@@ -426,6 +460,10 @@ def send_list_message(text, options, recipient, phone_id):
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         logging.info(f"List message sent successfully to {recipient}")
+        try:
+            log_conversation(recipient, 'out', 'list', {'text': text, 'options': options})
+        except Exception:
+            pass
         return True
     except requests.exceptions.HTTPError as e:
         error_detail = f"Status: {e.response.status_code}, Response: {e.response.text}"
@@ -441,7 +479,7 @@ def send_list_message(text, options, recipient, phone_id):
 # Handlers
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
-        "🎂 *Welcome to Fresh Cream Cakes!* 🎂\n\n"
+        "🎂 *Welcome to Cake Fairy!* 🎂\n\n"
         "We create delicious, beautifully decorated cakes for all occasions.\n\n"
         "Please choose an option to continue:"
     )
@@ -591,11 +629,56 @@ def handle_cake_types_menu(prompt, user_data, phone_id):
             return {'step': 'plastic_icing_menu'}
             
         elif selected_option == CakeTypeOptions.BACK:
-            return handle_welcome("", user_data, phone_id)
+            return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_cake_types_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'welcome'}
+
+def handle_restart_confirmation(prompt, user_data, phone_id):
+    try:
+        text = (prompt or "").strip().lower()
+
+        # Initial entry or unrecognized input -> show Yes/No buttons
+        if text == "" or text in ["restart", "start", "menu"]:
+            send_button_message(
+                "Is there anything else I can help you with?",
+                [
+                    {"id": "restart_yes", "title": "Yes"},
+                    {"id": "restart_no", "title": "No"}
+                ],
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {'step': 'restart_confirmation'})
+            return {'step': 'restart_confirmation'}
+
+        # Positive confirmation -> go to welcome flow
+        if text in ["yes", "y", "restart_yes", "ok", "sure", "yeah", "yep"]:
+            return handle_welcome("", user_data, phone_id)
+
+        # Negative confirmation -> send goodbye and move to a neutral state
+        if text in ["no", "n", "restart_no", "nope", "nah"]:
+            send_message("Have a good day!", user_data['sender'], phone_id)
+            update_user_state(user_data['sender'], {'step': 'goodbye'})
+            return {'step': 'goodbye'}
+
+        # Any other input -> re-send buttons
+        send_button_message(
+            "Is there anything else I can help you with?",
+            [
+                {"id": "restart_yes", "title": "Yes"},
+                {"id": "restart_no", "title": "No"}
+            ],
+            user_data['sender'],
+            phone_id
+        )
+        return {'step': 'restart_confirmation'}
+
+    except Exception as e:
+        logging.error(f"Error in handle_restart_confirmation: {e}")
+        send_message("An error occurred. Returning to main menu.", user_data['sender'], phone_id)
         return {'step': 'welcome'}
 
 def handle_fresh_cream_menu(prompt, user_data, phone_id):
@@ -1055,7 +1138,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'referral',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("How did you hear about us? (e.g., Facebook, friend, Google):", user_data['sender'], phone_id)
+            send_message("How did you hear about us? (e.g., Facebook, Friend, Google):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1079,48 +1162,21 @@ def handle_get_order_info(prompt, user_data, phone_id):
             
         elif current_field == 'special_requests':
             user.special_requests = prompt
-            
-            # Order is complete, show summary
-            order_summary = f"""
-🎂 *ORDER SUMMARY* 🎂
-
-*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
-*Name:* {user.name}
-*Contact:* {user.email or user.phone}
-*Flavor:* {user.flavor}
-*Filling:* {user.filling}
-*Icing:* {user.icing}
-*Shape:* {user.shape}
-*Theme:* {user.theme}
-*Due Date:* {user.due_date}
-*Due Time:* {user.due_time}
-*Colors:* {user.colors}
-*Message:* {user.message}
-*Referral Source:* {user.referral_source}
-*Special Requests:* {user.special_requests}
-
-*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
-
-Please confirm if this order is correct.
-            """
-            
-            send_button_message(
-                order_summary,
-                [
-                    {"id": "confirm_yes", "title": "✅ Yes, confirm order"},
-                    {"id": "confirm_no", "title": "❌ No, edit order"}
-                ],
+            # Ask for payment method next
+            payment_options = [option.value for option in PaymentOptions]
+            send_list_message(
+                "Please choose a payment method:",
+                payment_options,
                 user_data['sender'],
                 phone_id
             )
-            
             update_user_state(user_data['sender'], {
-                'step': 'confirm_order',
+                'step': 'choose_payment',
                 'user': user.to_dict(),
                 'selected_item': user_data.get('selected_item')
             })
             return {
-                'step': 'confirm_order',
+                'step': 'choose_payment',
                 'user': user.to_dict()
             }
             
@@ -1176,16 +1232,24 @@ Please visit www.cakefairy1.com for terms and conditions.
 *Phone:* {user.phone}
 *Email:* {user.email}
 *Item:* {user_data.get('selected_item', 'Custom Cake')}
-*Due Date:* {user.due_date} at {user.due_time}
 *Theme:* {user.theme}
+*Flavor:* {user.flavor}
+*Filling:* {user.filling}
+*Icing:* {user.icing}
+*Shape:* {user.shape}
+*Due Date:* {user.due_date}
+*Due Time:* {user.due_time}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Referral Source:* {user.referral_source}
+*Special Requests:* {user.special_requests}
+*Payment:* {user.payment_method}
 
-Please check the order system for details.
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
-            # Return to main menu
-            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
-            return handle_welcome("", user_data, phone_id)
+            # Ask if they need anything else (Yes/No)
+            return handle_restart_confirmation("", user_data, phone_id)
             
         else:
             # Restart order process
@@ -1240,9 +1304,8 @@ Please contact the customer for more details.
             """
             send_message(agent_msg, owner_phone, phone_id)
         
-        # Return to main menu
-        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
-        return handle_welcome("", user_data, phone_id)
+        # Ask if they need anything else (Yes/No)
+        return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_cupcake_inquiry: {e}")
@@ -1266,13 +1329,13 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 💰 *Fresh Cream Cakes Pricing* 💰
 
 • Cake Fairy Cake - $20
-• Double Delite (2 flavours) - Additional $5
-• Triple Delite (3 flavours) - Additional $10
-• Small (6 inch) - $30
-• Large (8 inch 3 layers or 7 inch 4 layers) - $40
-• Large (10 inch 2 layers) - $60
-• Extra Large (10 inch 3 layers) - $80
-• Extra Tall Cake (7 inch or 8 inch) - $65
+• Double Delite - Additional $5
+• Triple Delite - Additional $10
+• Small - $30
+• Large - $40
+• Large - $60
+• Extra Large - $80
+• Extra Tall Cake - $65
 
 *2-Tier Cakes:*
 • 4 inch + 6 inch - $60
@@ -1304,10 +1367,10 @@ def handle_pricing_menu(prompt, user_data, phone_id):
             pricing_msg = """
 💰 *Plastic Icing Cakes Pricing* 💰
 
-• Small (6 inch) - $40
-• Medium (8 inch) - $50
-• Large (10 inch 2 layers) - $70
-• Extra Large (10 inch 3 layers) - $100
+• Small - $40
+• Medium - $50
+• Large - $70
+• Extra Large - $100
             """
             
         send_message(pricing_msg, user_data['sender'], phone_id)
@@ -1394,8 +1457,7 @@ We're located at:
 [Your business address]
             """
             send_message(contact_info, user_data['sender'], phone_id)
-            send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
-            return handle_welcome("", user_data, phone_id)
+            return handle_restart_confirmation("", user_data, phone_id)
             
         elif selected_option == ContactOptions.BACK:
             return handle_welcome("", user_data, phone_id)
@@ -1437,9 +1499,8 @@ Please contact the customer as soon as possible.
             """
             send_message(agent_msg, owner_phone, phone_id)
         
-        # Return to main menu
-        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
-        return handle_welcome("", user_data, phone_id)
+        # Ask if they need anything else (Yes/No)
+        return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_callback_request: {e}")
@@ -1471,7 +1532,7 @@ def handle_order_menu(prompt, user_data, phone_id):
             return {'step': 'check_existing_order'}
             
         elif selected_option == OrderOptions.BACK:
-            return handle_welcome("", user_data, phone_id)
+            return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_order_menu: {e}")
@@ -1567,9 +1628,8 @@ For more details or to make changes, please contact us directly.
                 phone_id
             )
         
-        # Return to main menu
-        send_message("Is there anything else I can help you with?", user_data['sender'], phone_id)
-        return handle_welcome("", user_data, phone_id)
+        # Ask if they need anything else (Yes/No)
+        return handle_restart_confirmation("", user_data, phone_id)
             
     except Exception as e:
         logging.error(f"Error in handle_check_existing_order: {e}")
@@ -1654,9 +1714,14 @@ def handle_message(prompt, user_data, phone_id):
         
         # Convert prompt to lowercase for easier matching
         prompt_lower = prompt.lower()
+        # Log inbound text
+        try:
+            log_conversation(user_data['sender'], 'in', 'text', {'text': prompt})
+        except Exception:
+            pass
         
-        # Check for restart commands
-        if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu"]):
+        # Check for explicit restart commands (exact match only to avoid accidental triggers)
+        if prompt_lower.strip() in {"restart", "start over", "main menu", "menu", "hie", "hey", "hi"}:
             return handle_welcome("", user_data, phone_id)
             
         # Check for agent request at any point
@@ -1668,6 +1733,18 @@ def handle_message(prompt, user_data, phone_id):
         
         if current_step == 'welcome':
             return handle_welcome(prompt, user_data, phone_id)
+        
+        elif current_step == 'goodbye':
+            # Stay idle after saying goodbye; only react to explicit restart/menu/agent keywords
+            if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu", "hi", "hey", "hie"]):
+                return handle_welcome("", user_data, phone_id)
+            if any(word in prompt_lower for word in ["agent", "human", "representative", "speak to someone"]):
+                return human_agent(prompt, user_data, phone_id)
+            send_message("If you need anything else later, just say 'menu' to start again.", user_data['sender'], phone_id)
+            return {'step': 'goodbye'}
+
+        elif current_step == 'restart_confirmation':
+            return handle_restart_confirmation(prompt, user_data, phone_id)
             
         elif current_step == 'main_menu':
             return handle_main_menu(prompt, user_data, phone_id)
@@ -1701,6 +1778,63 @@ def handle_message(prompt, user_data, phone_id):
             
         elif current_step == 'get_order_info':
             return handle_get_order_info(prompt, user_data, phone_id)
+
+        elif current_step == 'choose_payment':
+            # Parse payment option
+            selected_option = None
+            for option in PaymentOptions:
+                if prompt_lower in option.value.lower():
+                    selected_option = option
+                    break
+            user = User.from_dict(user_data['user'])
+            if selected_option:
+                user.payment_method = selected_option.value
+            else:
+                user.payment_method = prompt
+
+            # Show final summary including payment
+            order_summary = f"""
+🎂 *ORDER SUMMARY* 🎂
+
+*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
+*Name:* {user.name}
+*Contact:* {user.email or user.phone}
+*Flavor:* {user.flavor}
+*Filling:* {user.filling}
+*Icing:* {user.icing}
+*Shape:* {user.shape}
+*Theme:* {user.theme}
+*Due Date:* {user.due_date}
+*Due Time:* {user.due_time}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Referral Source:* {user.referral_source}
+*Special Requests:* {user.special_requests}
+*Payment:* {user.payment_method}
+
+*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+
+Please confirm if this order is correct.
+            """
+
+            send_button_message(
+                order_summary,
+                [
+                    {"id": "confirm_yes", "title": "✅ Yes, confirm order"},
+                    {"id": "confirm_no", "title": "❌ No, edit order"}
+                ],
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {
+                'step': 'confirm_order',
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item')
+            })
+            return {
+                'step': 'confirm_order',
+                'user': user.to_dict()
+            }
             
         elif current_step == 'confirm_order':
             return handle_confirm_order(prompt, user_data, phone_id)
@@ -1748,13 +1882,12 @@ def webhook():
         token = request.args.get('hub.verify_token')
         challenge = request.args.get('hub.challenge')
         
-        if mode and token:
-            if mode == 'subscribe' and token == os.environ.get('VERIFY_TOKEN'):
-                print('WEBHOOK VERIFIED')
-                return challenge, 200
-            else:
-                return 'Forbidden', 403
-        return 'Bad Request', 400
+        if mode == "subscribe" and token == "BOT":
+            return challenge, 200
+               
+        else:
+            return 'Forbidden', 403
+        
     
     elif request.method == 'POST':
         try:
@@ -1768,24 +1901,38 @@ def webhook():
                             value = change.get('value')
                             if value:
                                 message = value.get('messages', [{}])[0]
-                                if message.get('type') == 'text':
-                                    text = message['text']['body']
-                                    sender = message['from']
-                                    
-                                    # Normalize phone number
-                                    sender = normalize_phone_number(sender)
-                                    print(f"Processing message from {sender}: {text}")
-                                    
-                                    # Get user state
-                                    user_data = get_user_state(sender)
-                                    print(f"User state: {user_data}")
-                                    
-                                    # Handle the message
-                                    new_state = handle_message(text, user_data, phone_id)
+                                sender = message.get('from')
+                                sender = normalize_phone_number(sender)
+                                incoming_text = None
+                                # Interactive replies
+                                if message.get('type') == 'interactive':
+                                    interactive = message.get('interactive', {})
+                                    if interactive.get('type') == 'list_reply':
+                                        selected = interactive.get('list_reply', {})
+                                        incoming_text = selected.get('title') or selected.get('id')
+                                    elif interactive.get('type') == 'button_reply':
+                                        selected = interactive.get('button_reply', {})
+                                        incoming_text = selected.get('id') or selected.get('title')
+                                    else:
+                                        incoming_text = ''
+                                elif message.get('type') == 'text':
+                                    incoming_text = message.get('text', {}).get('body', '')
+                                else:
+                                    incoming_text = ''
+
+                                # Log raw inbound
+                                try:
+                                    log_conversation(sender, 'in', message.get('type', 'unknown'), message)
+                                except Exception:
+                                    pass
+
+                                if incoming_text is not None:
+                                    print(f"Processing message from {sender}: {incoming_text}")
+                                    user_data_obj = get_user_state(sender)
+                                    print(f"User state: {user_data_obj}")
+                                    new_state = handle_message(incoming_text, user_data_obj, phone_id)
                                     print(f"New state: {new_state}")
-                                    
-                                    # Update user state if changed
-                                    if new_state != user_data:
+                                    if new_state != user_data_obj:
                                         update_user_state(sender, new_state)
             
             return jsonify({'status': 'success'}), 200
@@ -1799,7 +1946,7 @@ def webhook():
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('connected.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
