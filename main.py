@@ -17,7 +17,7 @@ wa_token = os.environ.get("WA_TOKEN")
 phone_id = os.environ.get("PHONE_ID")
 redis_url = os.environ.get("REDIS_URL")
 owner_phone = os.environ.get("OWNER_PHONE")
-AGENT_NUMBERS = ["+263772210415"]
+AGENT_NUMBERS = ["+263785019494"]
 
 # Redis client setup
 redis_client = Redis(
@@ -43,11 +43,6 @@ class MainMenuOptions(Enum):
     CONTACT = "Contact Us"
     AGENT = "Speak to an Agent"
 
-class PaymentOptions(Enum):
-    ECOCASH = "Ecocash"
-    INNBUCKS = "InnBucks"
-    OMARI = "Omari"
-
 class CakeTypeOptions(Enum):
     FRESH_CREAM = "Fresh Cream Cakes"
     FRUIT = "Fruit Cakes"
@@ -58,11 +53,11 @@ class FreshCreamOptions(Enum):
     CAKE_FAIRY = "Cake Fairy Cake - $20"
     DOUBLE_DELITE = "Double Delite (2 flavours) - +$5"
     TRIPLE_DELITE = "Triple Delite (3 flavours) - +$10"
-    SMALL = "Small - $30"
-    LARGE = "Large - $40"
-    LARGE_10 = "Large - $60"
-    XL = "Extra Large - $80"
-    EXTRA_TALL = "Extra Tall Cake - $65"
+    SMALL = "Small (6 inch) - $30"
+    LARGE = "Large (8 inch 3 layers or 7 inch 4 layers) - $40"
+    LARGE_10 = "Large (10 inch 2 layers) - $60"
+    XL = "Extra Large (10 inch 3 layers) - $80"
+    EXTRA_TALL = "Extra Tall Cake (7 inch or 8 inch) - $65"
     BACK = "Back to cake types"
 
 class TierCakesOptions(Enum):
@@ -96,10 +91,10 @@ class FruitCakeOptions(Enum):
     BACK = "Back to cake types"
 
 class PlasticIcingOptions(Enum):
-    SMALL = "Small - $40"
-    MEDIUM = "Medium - $50"
-    LARGE = "Large - $70"
-    XL = "Extra Large - $100"
+    SMALL = "Small (6 inch) - $40"
+    MEDIUM = "Medium (8 inch) - $50"
+    LARGE = "Large (10 inch 2 layers) - $70"
+    XL = "Extra Large (10 inch 3 layers) - $100"
     BACK = "Back to cake types"
 
 class OrderOptions(Enum):
@@ -131,7 +126,6 @@ class User:
         self.special_requests = None
         self.referral_source = None
         self.callback_requested = False
-        self.payment_method = None
 
     def to_dict(self):
         return {
@@ -151,8 +145,7 @@ class User:
             "colors": self.colors,
             "special_requests": self.special_requests,
             "referral_source": self.referral_source,
-            "callback_requested": self.callback_requested,
-            "payment_method": self.payment_method
+            "callback_requested": self.callback_requested
         }
 
     @classmethod
@@ -178,7 +171,6 @@ class User:
         user.special_requests = data.get("special_requests")
         user.referral_source = data.get("referral_source")
         user.callback_requested = data.get("callback_requested", False)
-        user.payment_method = data.get("payment_method")
         return user
 
 # Phone number normalization function
@@ -201,18 +193,6 @@ def normalize_phone_number(phone):
         return cleaned
 
 # Redis state functions
-def log_conversation(phone_number, direction, message_type, payload):
-    try:
-        log_entry = {
-            'timestamp': datetime.now().isoformat(),
-            'direction': direction,  # 'in' or 'out' or 'state'
-            'type': message_type,    # 'text' | 'button' | 'list' | 'state' | 'raw'
-            'payload': payload,
-        }
-        redis_client.lpush(f"conversation:{phone_number}", json.dumps(log_entry))
-        redis_client.ltrim(f"conversation:{phone_number}", 0, 499)
-    except Exception as e:
-        logging.error(f"Failed to log conversation: {e}")
 def get_user_state(phone_number):
     state_json = redis_client.get(f"user_state:{phone_number}")
     if state_json:
@@ -236,11 +216,6 @@ def update_user_state(phone_number, updates):
     print(f"Final state to save: {current}")
     redis_client.setex(f"user_state:{phone_number}", 86400, json.dumps(current))
     print(f"State saved for {phone_number}")
-    # Log state snapshot
-    try:
-        log_conversation(phone_number, 'state', 'state', current)
-    except Exception:
-        pass
 
 def send_message(text, recipient, phone_id):
     url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
@@ -273,11 +248,6 @@ def send_message(text, recipient, phone_id):
     try:
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
-        # Log outgoing text
-        try:
-            log_conversation(recipient, 'out', 'text', {'text': text})
-        except Exception:
-            pass
     except requests.exceptions.RequestException as e:
         logging.error(f"Failed to send message: {e}")
 
@@ -383,10 +353,6 @@ def send_button_message(text, buttons, recipient, phone_id):
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
         print(f"Button message sent successfully to {recipient}")
-        try:
-            log_conversation(recipient, 'out', 'button', {'text': text, 'buttons': buttons})
-        except Exception:
-            pass
         return True
     except requests.exceptions.RequestException as e:
         logging.error(f"Failed to send button message: {e}")
@@ -460,10 +426,6 @@ def send_list_message(text, options, recipient, phone_id):
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         logging.info(f"List message sent successfully to {recipient}")
-        try:
-            log_conversation(recipient, 'out', 'list', {'text': text, 'options': options})
-        except Exception:
-            pass
         return True
     except requests.exceptions.HTTPError as e:
         error_detail = f"Status: {e.response.status_code}, Response: {e.response.text}"
@@ -479,7 +441,7 @@ def send_list_message(text, options, recipient, phone_id):
 # Handlers
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
-        "🎂 *Welcome to Cake Fairy!* 🎂\n\n"
+        "🎂 *Welcome to Fresh Cream Cakes!* 🎂\n\n"
         "We create delicious, beautifully decorated cakes for all occasions.\n\n"
         "Please choose an option to continue:"
     )
@@ -1117,21 +1079,48 @@ def handle_get_order_info(prompt, user_data, phone_id):
             
         elif current_field == 'special_requests':
             user.special_requests = prompt
-            # Ask for payment method next
-            payment_options = [option.value for option in PaymentOptions]
-            send_list_message(
-                "Please choose a payment method:",
-                payment_options,
+            
+            # Order is complete, show summary
+            order_summary = f"""
+🎂 *ORDER SUMMARY* 🎂
+
+*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
+*Name:* {user.name}
+*Contact:* {user.email or user.phone}
+*Flavor:* {user.flavor}
+*Filling:* {user.filling}
+*Icing:* {user.icing}
+*Shape:* {user.shape}
+*Theme:* {user.theme}
+*Due Date:* {user.due_date}
+*Due Time:* {user.due_time}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Referral Source:* {user.referral_source}
+*Special Requests:* {user.special_requests}
+
+*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+
+Please confirm if this order is correct.
+            """
+            
+            send_button_message(
+                order_summary,
+                [
+                    {"id": "confirm_yes", "title": "✅ Yes, confirm order"},
+                    {"id": "confirm_no", "title": "❌ No, edit order"}
+                ],
                 user_data['sender'],
                 phone_id
             )
+            
             update_user_state(user_data['sender'], {
-                'step': 'choose_payment',
+                'step': 'confirm_order',
                 'user': user.to_dict(),
                 'selected_item': user_data.get('selected_item')
             })
             return {
-                'step': 'choose_payment',
+                'step': 'confirm_order',
                 'user': user.to_dict()
             }
             
@@ -1187,19 +1176,10 @@ Please visit www.cakefairy1.com for terms and conditions.
 *Phone:* {user.phone}
 *Email:* {user.email}
 *Item:* {user_data.get('selected_item', 'Custom Cake')}
+*Due Date:* {user.due_date} at {user.due_time}
 *Theme:* {user.theme}
-*Flavor:* {user.flavor}
-*Filling:* {user.filling}
-*Icing:* {user.icing}
-*Shape:* {user.shape}
-*Due Date:* {user.due_date}
-*Due Time:* {user.due_time}
-*Colors:* {user.colors}
-*Message:* {user.message}
-*Referral Source:* {user.referral_source}
-*Special Requests:* {user.special_requests}
-*Payment:* {user.payment_method}
 
+Please check the order system for details.
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
@@ -1286,13 +1266,13 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 💰 *Fresh Cream Cakes Pricing* 💰
 
 • Cake Fairy Cake - $20
-• Double Delite - Additional $5
-• Triple Delite - Additional $10
-• Small - $30
-• Large - $40
-• Large - $60
-• Extra Large - $80
-• Extra Tall Cake - $65
+• Double Delite (2 flavours) - Additional $5
+• Triple Delite (3 flavours) - Additional $10
+• Small (6 inch) - $30
+• Large (8 inch 3 layers or 7 inch 4 layers) - $40
+• Large (10 inch 2 layers) - $60
+• Extra Large (10 inch 3 layers) - $80
+• Extra Tall Cake (7 inch or 8 inch) - $65
 
 *2-Tier Cakes:*
 • 4 inch + 6 inch - $60
@@ -1324,10 +1304,10 @@ def handle_pricing_menu(prompt, user_data, phone_id):
             pricing_msg = """
 💰 *Plastic Icing Cakes Pricing* 💰
 
-• Small - $40
-• Medium - $50
-• Large - $70
-• Extra Large - $100
+• Small (6 inch) - $40
+• Medium (8 inch) - $50
+• Large (10 inch 2 layers) - $70
+• Extra Large (10 inch 3 layers) - $100
             """
             
         send_message(pricing_msg, user_data['sender'], phone_id)
@@ -1674,14 +1654,9 @@ def handle_message(prompt, user_data, phone_id):
         
         # Convert prompt to lowercase for easier matching
         prompt_lower = prompt.lower()
-        # Log inbound text
-        try:
-            log_conversation(user_data['sender'], 'in', 'text', {'text': prompt})
-        except Exception:
-            pass
         
         # Check for restart commands
-        if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu", "hie", "hey", "hi"]):
+        if any(word in prompt_lower for word in ["restart", "start over", "main menu", "menu"]):
             return handle_welcome("", user_data, phone_id)
             
         # Check for agent request at any point
@@ -1726,63 +1701,6 @@ def handle_message(prompt, user_data, phone_id):
             
         elif current_step == 'get_order_info':
             return handle_get_order_info(prompt, user_data, phone_id)
-
-        elif current_step == 'choose_payment':
-            # Parse payment option
-            selected_option = None
-            for option in PaymentOptions:
-                if prompt_lower in option.value.lower():
-                    selected_option = option
-                    break
-            user = User.from_dict(user_data['user'])
-            if selected_option:
-                user.payment_method = selected_option.value
-            else:
-                user.payment_method = prompt
-
-            # Show final summary including payment
-            order_summary = f"""
-🎂 *ORDER SUMMARY* 🎂
-
-*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
-*Name:* {user.name}
-*Contact:* {user.email or user.phone}
-*Flavor:* {user.flavor}
-*Filling:* {user.filling}
-*Icing:* {user.icing}
-*Shape:* {user.shape}
-*Theme:* {user.theme}
-*Due Date:* {user.due_date}
-*Due Time:* {user.due_time}
-*Colors:* {user.colors}
-*Message:* {user.message}
-*Referral Source:* {user.referral_source}
-*Special Requests:* {user.special_requests}
-*Payment:* {user.payment_method}
-
-*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
-
-Please confirm if this order is correct.
-            """
-
-            send_button_message(
-                order_summary,
-                [
-                    {"id": "confirm_yes", "title": "✅ Yes, confirm order"},
-                    {"id": "confirm_no", "title": "❌ No, edit order"}
-                ],
-                user_data['sender'],
-                phone_id
-            )
-            update_user_state(user_data['sender'], {
-                'step': 'confirm_order',
-                'user': user.to_dict(),
-                'selected_item': user_data.get('selected_item')
-            })
-            return {
-                'step': 'confirm_order',
-                'user': user.to_dict()
-            }
             
         elif current_step == 'confirm_order':
             return handle_confirm_order(prompt, user_data, phone_id)
@@ -1830,12 +1748,13 @@ def webhook():
         token = request.args.get('hub.verify_token')
         challenge = request.args.get('hub.challenge')
         
-        if mode == "subscribe" and token == "BOT":
-            return challenge, 200
-               
-        else:
-            return 'Forbidden', 403
-        
+        if mode and token:
+            if mode == 'subscribe' and token == os.environ.get('VERIFY_TOKEN'):
+                print('WEBHOOK VERIFIED')
+                return challenge, 200
+            else:
+                return 'Forbidden', 403
+        return 'Bad Request', 400
     
     elif request.method == 'POST':
         try:
@@ -1849,38 +1768,24 @@ def webhook():
                             value = change.get('value')
                             if value:
                                 message = value.get('messages', [{}])[0]
-                                sender = message.get('from')
-                                sender = normalize_phone_number(sender)
-                                incoming_text = None
-                                # Interactive replies
-                                if message.get('type') == 'interactive':
-                                    interactive = message.get('interactive', {})
-                                    if interactive.get('type') == 'list_reply':
-                                        selected = interactive.get('list_reply', {})
-                                        incoming_text = selected.get('title') or selected.get('id')
-                                    elif interactive.get('type') == 'button_reply':
-                                        selected = interactive.get('button_reply', {})
-                                        incoming_text = selected.get('id') or selected.get('title')
-                                    else:
-                                        incoming_text = ''
-                                elif message.get('type') == 'text':
-                                    incoming_text = message.get('text', {}).get('body', '')
-                                else:
-                                    incoming_text = ''
-
-                                # Log raw inbound
-                                try:
-                                    log_conversation(sender, 'in', message.get('type', 'unknown'), message)
-                                except Exception:
-                                    pass
-
-                                if incoming_text is not None:
-                                    print(f"Processing message from {sender}: {incoming_text}")
-                                    user_data_obj = get_user_state(sender)
-                                    print(f"User state: {user_data_obj}")
-                                    new_state = handle_message(incoming_text, user_data_obj, phone_id)
+                                if message.get('type') == 'text':
+                                    text = message['text']['body']
+                                    sender = message['from']
+                                    
+                                    # Normalize phone number
+                                    sender = normalize_phone_number(sender)
+                                    print(f"Processing message from {sender}: {text}")
+                                    
+                                    # Get user state
+                                    user_data = get_user_state(sender)
+                                    print(f"User state: {user_data}")
+                                    
+                                    # Handle the message
+                                    new_state = handle_message(text, user_data, phone_id)
                                     print(f"New state: {new_state}")
-                                    if new_state != user_data_obj:
+                                    
+                                    # Update user state if changed
+                                    if new_state != user_data:
                                         update_user_state(sender, new_state)
             
             return jsonify({'status': 'success'}), 200
@@ -1894,7 +1799,7 @@ def webhook():
 
 @app.route('/')
 def home():
-    return render_template('connected.html')
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
