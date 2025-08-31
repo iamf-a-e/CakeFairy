@@ -1679,72 +1679,28 @@ Please contact the customer as soon as possible.
 
 def handle_waiting_for_agent(prompt, user_data, phone_id):
     try:
-        # Check if the message is from the agent (owner)
-        if user_data['sender'] == owner_phone:
-            # This is a message from agent to customer
-            # Find the customer who is waiting for agent response
-            # You'll need to implement logic to track which customer the agent is responding to
-            customer_phone = get_customer_for_agent(user_data['sender'])  # You need to implement this function
-            
-            if customer_phone:
-                forward_msg = f"""
-👨‍💼 *Message from our agent:*
-
-{prompt}
-                """
-                send_message(forward_msg, customer_phone, phone_id)
-                send_message("Message delivered to customer.", user_data['sender'], phone_id)
-            else:
-                send_message("No customer is currently waiting for a response.", user_data['sender'], phone_id)
-            
-            return {'step': 'waiting_for_agent'}
-        
-        else:
-            # This is a message from customer to agent
-            # Forward message to agent
-            if owner_phone:
-                forward_msg = f"""
+        # Forward message to agent
+        if owner_phone:
+            forward_msg = f"""
 📩 *Message from customer {user_data['sender']}:*
 
 {prompt}
-                """
-                send_message(forward_msg, owner_phone, phone_id)
-            
-            send_message(
-                "Your message has been forwarded to our team. "
-                "We'll get back to you as soon as possible.",
-                user_data['sender'],
-                phone_id
-            )
-            
-            # Store that this customer is waiting for agent response
-            store_customer_waiting(user_data['sender'])  # You need to implement this function
-            
-            return {'step': 'waiting_for_agent'}
+            """
+            send_message(forward_msg, owner_phone, phone_id)
+        
+        send_message(
+            "Your message has been forwarded to our team. "
+            "We'll get back to you as soon as possible.",
+            user_data['sender'],
+            phone_id
+        )
+        
+        return {'step': 'waiting_for_agent'}
             
     except Exception as e:
         logging.error(f"Error in handle_waiting_for_agent: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
-
-# You'll need to implement these helper functions:
-def get_customer_for_agent(agent_phone):
-    """
-    Retrieve the customer phone number that the agent is currently responding to.
-    This could be stored in a database, cache, or session storage.
-    """
-    # Implementation depends on your storage system
-    return redis.get(f"agent_{agent_phone}_customer")
-    
-
-def store_customer_waiting(customer_phone):
-    """
-    Store that a customer is waiting for agent response.
-    You might want to store which agent is assigned, timestamp, etc.
-    """
-    # Implementation depends on your storage system
-    redis.set(f"waiting_customer_{customer_phone}", "waiting")
-    return
 
 # Main message handler
 def handle_message(prompt, user_data, phone_id):
