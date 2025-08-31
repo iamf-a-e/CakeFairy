@@ -480,7 +480,8 @@ def send_list_message(text, options, recipient, phone_id):
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
         "🎂 *Welcome to Cake Fairy!* 🎂\n\n"
-        "We create delicious, beautifully decorated cakes for all occasions.\n\n"
+        "We create delicious, beautifully decorated cakes for all occasions.\n"
+        "Fresh cream is the default filling for all our $20 cakes.\n\n"
         "Please choose an option to continue:"
     )
     
@@ -1003,7 +1004,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What flavor would you like? (e.g., chocolate, vanilla, red velvet):", user_data['sender'], phone_id)
+            send_message("What flavor would you like? (e.g., chocolate, vanilla, orange,strawberry or lemon):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1348,11 +1349,6 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 • 4 inch + 6 inch + 8 inch - $140
 • 5 inch + 7 inch + 9 inch - $170
 • 6 inch + 8 inch + 10 inch - $210
-
-*Additional Options:*
-• Fondant - Additional $20
-• Ganache - Additional $10
-• SMBC - Additional $15
             """
             
         elif selected_option == CakeTypeOptions.FRUIT:
