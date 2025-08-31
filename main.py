@@ -1676,34 +1676,54 @@ Please contact the customer as soon as possible.
         logging.error(f"Error in human_agent: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
+        
 
 def handle_waiting_for_agent(prompt, user_data, phone_id):
     try:
-        # Forward message to agent
+        # Customer waiting for agent
         if owner_phone:
-            forward_msg = f"""
-📩 *Message from customer {user_data['sender']}:*
-
-{prompt}
-            """
-            send_message(forward_msg, owner_phone, phone_id)
-        
-        send_message(
-            "Your message has been forwarded to our team. "
-            "We'll get back to you as soon as possible.",
-            user_data['sender'],
-            phone_id
-        )
-        
-        return {'step': 'waiting_for_agent'}
-            
+            send_message(f"📩 *Message from customer {user_data['sender']}:*\n\n{prompt}", owner_phone, phone_id)
+            # Start agent session
+            start_agent_session(user_data['sender'], owner_phone)
+        return {'step': 'agent_chat'}
     except Exception as e:
         logging.error(f"Error in handle_waiting_for_agent: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
 
+
+
+def start_agent_session(customer, agent):
+    update_user_state(customer, {"step": "agent_chat", "agent": agent})
+    update_user_state(agent, {"step": "agent_chat", "customer": customer})
+    send_message("✅ You are now connected to a human agent.", customer, phone_id)
+    send_message(f"✅ You are now connected with customer {customer}. Send 'exit' to end the chat.", agent, phone_id)
+
+def end_agent_session(customer, agent):
+    update_user_state(customer, {"step": "main_menu"})
+    update_user_state(agent, {"step": "main_menu"})
+    send_message("👋 The agent has left the chat. You're now back with the bot.", customer, phone_id)
+    send_message(f"👋 Chat with {customer} ended. Handover back to bot.", agent, phone_id)
+
+
 # Main message handler
 def handle_message(prompt, user_data, phone_id):
+    # Check if this sender is an agent
+    if user_data["sender"] in AGENT_NUMBERS:
+        # Agent sending message
+        if user_data.get("step") == "agent_chat" and "customer" in user_data:
+            customer = user_data["customer"]
+            if prompt.lower().strip() == "exit":
+                end_agent_session(customer, user_data["sender"])
+                return {"step": "main_menu"}
+            else:
+                send_message(f"👨‍💼 Agent: {prompt}", customer, phone_id)
+                return user_data
+        else:
+            # If agent replies outside a session
+            send_message("⚠️ No active customer session. Please wait for a request.", user_data["sender"], phone_id)
+            return user_data
+
     try:
         print(f"Handling message: '{prompt}' for user: {user_data}")
         
