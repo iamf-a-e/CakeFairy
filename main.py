@@ -2034,18 +2034,18 @@ def handle_message(prompt, user_data, phone_id):
                 send_message("Welcome! You can start a conversation by responding to a customer's agent request.", user_data['sender'], phone_id)
                 return {'step': 'main_menu'}
         
-        # If customer is in waiting_for_agent state, handle it immediately
-        if current_step == 'waiting_for_agent':
-            return handle_waiting_for_agent(prompt, user_data, phone_id)
-        
-        # Only check for global commands if not in special states
         # Check for explicit restart commands (exact match only to avoid accidental triggers)
+        # These should always be available regardless of current step
         if prompt_lower.strip() in {"restart", "start over", "main menu", "menu", "hie", "hey", "hi"}:
             return handle_welcome("", user_data, phone_id)
             
         # Check for agent request at any point
         if any(word in prompt_lower for word in ["agent", "human", "representative", "speak to someone"]):
             return human_agent(prompt, user_data, phone_id)
+        
+        # If customer is in waiting_for_agent state, handle it immediately
+        if current_step == 'waiting_for_agent':
+            return handle_waiting_for_agent(prompt, user_data, phone_id)
         
         if current_step == 'welcome':
             return handle_welcome(prompt, user_data, phone_id)
