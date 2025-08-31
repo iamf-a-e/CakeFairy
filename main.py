@@ -1838,7 +1838,14 @@ def human_agent(prompt, user_data, phone_id):
         redis_client.setex(f"agent_request:{request_id}", 3600, json.dumps(agent_request))  # 1 hour expiration
         
         # Notify agent/owner and put agent in waiting_for_agent state
-        if owner_phone:
+        # Use the first available agent number
+        agent_phone = AGENT_NUMBERS[0] if AGENT_NUMBERS else owner_phone
+        
+        if not agent_phone:
+            send_message("Sorry, no agents are currently available. Please try again later or contact us through other means.", user_data['sender'], phone_id)
+            return {'step': 'main_menu'}
+        
+        if agent_phone:
             agent_msg = f"""
 👨‍💼 *HUMAN AGENT REQUEST* 👩‍💼
 
@@ -1848,21 +1855,21 @@ def human_agent(prompt, user_data, phone_id):
 
 Please contact the customer as soon as possible.
             """
-            send_message(agent_msg, owner_phone, phone_id)
+            send_message(agent_msg, agent_phone, phone_id)
             
             # Put agent in waiting_for_agent state
-            update_user_state(owner_phone, {'step': 'waiting_for_agent', 'customer_phone': user_data['sender']})
+            update_user_state(agent_phone, {'step': 'waiting_for_agent', 'customer_phone': user_data['sender']})
             
             # Store agent-customer relationship in Redis
             agent_customer_data = {
-                'agent_phone': owner_phone,
+                'agent_phone': agent_phone,
                 'customer_phone': user_data['sender'],
                 'request_id': request_id,
                 'timestamp': datetime.now().isoformat()
             }
-            redis_client.setex(f"agent_customer:{owner_phone}", 3600, json.dumps(agent_customer_data))
+            redis_client.setex(f"agent_customer:{agent_phone}", 3600, json.dumps(agent_customer_data))
         
-        update_user_state(user_data['sender'], {'step': 'waiting_for_agent', 'agent_phone': owner_phone})
+        update_user_state(user_data['sender'], {'step': 'waiting_for_agent', 'agent_phone': agent_phone})
         return {'step': 'waiting_for_agent'}
             
     except Exception as e:
@@ -1872,8 +1879,19 @@ Please contact the customer as soon as possible.
 
 def handle_waiting_for_agent(prompt, user_data, phone_id):
     try:
+        print(f"DEBUG: handle_waiting_for_agent called for {user_data['sender']} with step {user_data.get('step')}")
+        print(f"DEBUG: user_data: {user_data}")
+        
         # Check if this is a message from an agent
-        if user_data['sender'] in AGENT_NUMBERS:
+        # Normalize the sender's phone number for comparison
+        normalized_sender = normalize_phone_number(user_data['sender'])
+        is_agent = any(normalize_phone_number(agent_num) == normalized_sender for agent_num in AGENT_NUMBERS)
+        
+        print(f"DEBUG: Sender: {user_data['sender']}, Normalized: {normalized_sender}")
+        print(f"DEBUG: AGENT_NUMBERS: {AGENT_NUMBERS}")
+        print(f"DEBUG: Is agent: {is_agent}")
+        
+        if is_agent:
             # Agent is sending a message
             if prompt.lower().strip() == 'exit':
                 # Agent wants to exit - handover back to bot
@@ -1897,6 +1915,7 @@ def handle_waiting_for_agent(prompt, user_data, phone_id):
                 return {'step': 'waiting_for_agent'}
         else:
             # Customer is sending a message - forward to agent
+            print(f"DEBUG: Customer {user_data['sender']} sending message, agent_phone: {user_data.get('agent_phone')}")
             agent_phone = user_data.get('agent_phone')
             if agent_phone:
                 forward_msg = f"""
@@ -1906,14 +1925,15 @@ def handle_waiting_for_agent(prompt, user_data, phone_id):
                 """
                 send_message(forward_msg, agent_phone, phone_id)
             else:
-                # Fallback to owner_phone if agent_phone not found
-                if owner_phone:
+                # Fallback to first available agent if agent_phone not found
+                fallback_agent = AGENT_NUMBERS[0] if AGENT_NUMBERS else owner_phone
+                if fallback_agent:
                     forward_msg = f"""
 📩 *Message from customer {user_data['sender']}:*
 
 {prompt}
                     """
-                    send_message(forward_msg, owner_phone, phone_id)
+                    send_message(forward_msg, fallback_agent, phone_id)
             
             send_message(
                 "Your message has been forwarded to our team. "
@@ -2002,7 +2022,10 @@ def handle_message(prompt, user_data, phone_id):
         current_step = user_data.get('step', 'welcome')
         
         # Check if sender is an agent and handle their messages
-        if user_data['sender'] in AGENT_NUMBERS:
+        normalized_sender = normalize_phone_number(user_data['sender'])
+        is_agent = any(normalize_phone_number(agent_num) == normalized_sender for agent_num in AGENT_NUMBERS)
+        
+        if is_agent:
             # Agent is sending a message - handle based on their current state
             if current_step == 'waiting_for_agent':
                 return handle_waiting_for_agent(prompt, user_data, phone_id)
