@@ -56,8 +56,8 @@ class CakeTypeOptions(Enum):
 
 class FreshCreamOptions(Enum):
     CAKE_FAIRY = "Cake Fairy Cake - $20"
-    DOUBLE_DELITE = "Double Delite (2 flavours) - +$5"
-    TRIPLE_DELITE = "Triple Delite (3 flavours) - +$10"
+    DOUBLE_DELITE = "Double Delite (2 flavours) - $25"
+    TRIPLE_DELITE = "Triple Delite (3 flavours) - $30"
     SMALL = "Small - $30"
     LARGE = "Large - $40"
     LARGE_10 = "Large - $60"
@@ -1330,8 +1330,8 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 💰 *Fresh Cream Cakes Pricing* 💰
 
 • Cake Fairy Cake - $20
-• Double Delite - Additional $5
-• Triple Delite - Additional $10
+• Double Delite - $25
+• Triple Delite - $30
 • Small - $30
 • Large - $40
 • Large - $60
