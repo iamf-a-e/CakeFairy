@@ -1004,7 +1004,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What flavor would you like? (e.g., chocolate, vanilla, orange,strawberry or lemon):", user_data['sender'], phone_id)
+            send_message("Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1019,7 +1019,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'filling',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What filling would you like? (e.g., cream, fruit, chocolate ganache):", user_data['sender'], phone_id)
+            send_message("The filling available is fresh cream, confirm by sending fresh cream.", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1034,7 +1034,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'icing',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What type of icing would you like? (e.g., buttercream, fondant, ganache):", user_data['sender'], phone_id)
+            send_message("The icing available is fresh cream, confirm by sending fresh cream.", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1049,7 +1049,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'shape',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What shape would you like? (e.g., round, square, heart, custom):", user_data['sender'], phone_id)
+            send_message("The shape available is round, confirm by sending round.", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1109,7 +1109,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'colors',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What colors would you like on the cake? (e.g., blue and white):", user_data['sender'], phone_id)
+            send_message("What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attractan extra charge of $5", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
