@@ -58,11 +58,11 @@ class FreshCreamOptions(Enum):
     CAKE_FAIRY = "Cake Fairy Cake - $20"
     DOUBLE_DELITE = "Double Delite (2 flavours) - $25"
     TRIPLE_DELITE = "Triple Delite (3 flavours) - $30"
-    SMALL = "Small 6" - $30"
-    LARGE = "Large 8" - $40"
-    LARGE_10 = "Large 10" - $60"
-    XL = "Extra Large 12" - $80"
-    EXTRA_TALL = "Extra Tall Cake 7" - $65"
+    SMALL = "Small 6inch - $30"
+    LARGE = "Large 8inch - $40"
+    LARGE_10 = "Large 10inch - $60"
+    XL = "Extra Large 12inch - $80"
+    EXTRA_TALL = "Extra Tall Cake 7inch - $65"
     BACK = "Back to cake types"
 
 class TierCakesOptions(Enum):
