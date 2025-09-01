@@ -984,7 +984,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'contact',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("Thank you. Please provide your email or WhatsApp number:", user_data['sender'], phone_id)
+            send_message("Thank you. Please provide your email:", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1124,7 +1124,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'colors',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attractan extra charge of $5", user_data['sender'], phone_id)
+            send_message("What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attract an extra charge of $5", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
