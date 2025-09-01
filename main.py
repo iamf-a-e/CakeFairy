@@ -1004,12 +1004,27 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5", user_data['sender'], phone_id)
+        
+            # Customize flavor message based on selected cake
+            selected_item = (user_data.get('selected_item') or "").lower()
+            if "cake fairy" in selected_item:
+                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
+            elif "double delite" in selected_item:
+                flavor_msg = "Please choose two flavors: chocolate, vanilla, orange, strawberry, or lemon."
+            elif "triple delite" in selected_item:
+                flavor_msg = "Please choose three flavors: chocolate, vanilla, orange, strawberry, or lemon."
+            else:
+                # Default to single flavor prompt if not specified
+                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon."
+        
+            send_message(flavor_msg, user_data['sender'], phone_id)
+        
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'flavor'
             }
+
             
         elif current_field == 'flavor':
             user.flavor = prompt
