@@ -1232,7 +1232,7 @@ def handle_confirm_order(prompt, user_data, phone_id):
 
 Thank you for your order, {user.name}! Your order has been received and is being processed.
 
-We'll contact you at {user.email or user.phone} if we need any additional information.
+We'll contact you at {user.phone} if we need any additional information.
 
 *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
 
@@ -1268,7 +1268,7 @@ Please visit www.cakefairy1.com for terms and conditions.
                 send_message(agent_notification, owner_phone, phone_id)
             
             # Ask if they need anything else (Yes/No)
-            return handle_restart_confirmation("", user_data, phone_id)
+            return awaiting_design_picture("", user_data, phone_id)
             
         else:
             # Restart order process
