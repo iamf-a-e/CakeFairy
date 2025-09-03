@@ -46,7 +46,8 @@ class MainMenuOptions(Enum):
 class PaymentOptions(Enum):
     ECOCASH = "Ecocash"
     INNBUCKS = "InnBucks"
-    OMARI = "Omari"
+    PAYPAL = "PayPal"
+    COLLECTION = "On Collection"
 
 class CakeTypeOptions(Enum):
     FRESH_CREAM = "Fresh Cream Cakes"
