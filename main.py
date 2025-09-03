@@ -1216,7 +1216,7 @@ def handle_confirm_order(prompt, user_data, phone_id):
                 'user': user.to_dict(),
                 'selected_item': user_data.get('selected_item'),
                 'timestamp': datetime.now().isoformat(),
-                'status': 'pending'
+                'status': 'pending_design'  # Changed status to indicate design is pending
             }
             
             redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_data))  # 7 days expiration
@@ -1311,6 +1311,16 @@ def handle_design_request(prompt, user_data, phone_id):
         if prompt and prompt.startswith('IMAGE:'):
             image_id = prompt[6:]  # Remove 'IMAGE:' prefix to get image ID
             
+            # Update order status to design received
+            order_number = user_data.get('order_number')
+            if order_number:
+                order_data = redis_client.get(f"order:{order_number}")
+                if order_data:
+                    order_json = json.loads(order_data)
+                    order_json['status'] = 'design_received'
+                    order_json['design_image_id'] = image_id
+                    redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_json))
+            
             # Notify agent/owner about the design image
             if owner_phone:
                 # First send the informational message
@@ -1347,7 +1357,14 @@ Here's the design image they sent:
                     'payment_method': payment_method
                 }, phone_id)
             else:
-                # For collection payment, go to restart confirmation
+                # For collection payment, update order status and complete
+                if order_number:
+                    order_data = redis_client.get(f"order:{order_number}")
+                    if order_data:
+                        order_json = json.loads(order_data)
+                        order_json['status'] = 'completed'
+                        redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_json))
+                
                 send_message(
                     "Your order is now complete! We'll contact you when your cake is ready for collection.",
                     user_data['sender'],
@@ -1391,6 +1408,16 @@ def handle_proof_of_payment(prompt, user_data, phone_id):
         # If we have an image, process it
         if prompt and prompt.startswith('IMAGE:'):
             image_id = prompt[6:]  # Remove 'IMAGE:' prefix to get image ID
+            
+            # Update order status to payment received and completed
+            order_number = user_data.get('order_number')
+            if order_number:
+                order_data = redis_client.get(f"order:{order_number}")
+                if order_data:
+                    order_json = json.loads(order_data)
+                    order_json['status'] = 'completed'
+                    order_json['payment_image_id'] = image_id
+                    redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_json))
             
             # Notify agent/owner about the proof of payment
             if owner_phone:
@@ -1441,6 +1468,7 @@ Here's the proof of payment they sent:
         logging.error(f"Error in handle_proof_of_payment: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return handle_restart_confirmation("", user_data, phone_id)
+
        
 
 def send_image_by_id(image_id, recipient, phone_id):
