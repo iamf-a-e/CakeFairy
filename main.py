@@ -1306,12 +1306,13 @@ def handle_design_request(prompt, user_data, phone_id):
             )
             return {'step': 'design_request'}
         
-        # If we have an image (handled in webhook), process it
+        # If we have an image, process it
         if prompt and prompt.startswith('IMAGE:'):
-            image_url = prompt[6:]  # Remove 'IMAGE:' prefix
+            image_id = prompt[6:]  # Remove 'IMAGE:' prefix to get image ID
             
             # Notify agent/owner about the design image
             if owner_phone:
+                # First send the informational message
                 design_msg = f"""
 🎨 *NEW CAKE DESIGN SUBMITTED* 🎨
 
@@ -1319,11 +1320,12 @@ def handle_design_request(prompt, user_data, phone_id):
 *Customer:* {user_data.get('customer_name', 'N/A')}
 *Phone:* {user_data['sender']}
 
-*Design Image:* {image_url}
-
-Please review the design and contact the customer if needed.
+Here's the design image they sent:
                 """
                 send_message(design_msg, owner_phone, phone_id)
+                
+                # Then send the actual image
+                download_and_send_image(image_id, owner_phone, phone_id)
             
             # Confirm receipt to customer
             send_message(
@@ -1356,6 +1358,60 @@ Please review the design and contact the customer if needed.
         logging.error(f"Error in handle_design_request: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return handle_restart_confirmation("", user_data, phone_id)
+
+
+def download_and_send_image(image_id, recipient, phone_id):
+    """Download image from WhatsApp and send it to recipient"""
+    try:
+        # Get image URL from WhatsApp API
+        url = f"https://graph.facebook.com/v19.0/{image_id}"
+        headers = {'Authorization': f'Bearer {wa_token}'}
+        
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            image_data = response.json()
+            image_url = image_data.get('url')
+            
+            if image_url:
+                # Download the image
+                image_response = requests.get(image_url, headers=headers)
+                if image_response.status_code == 200:
+                    # Save temporarily or process as needed
+                    # For now, we'll use the URL approach but WhatsApp can handle media URLs
+                    send_image_message(image_url, recipient, phone_id)
+                    return True
+                    
+    except Exception as e:
+        logging.error(f"Error downloading image: {e}")
+    
+    return False
+
+def send_image_message(image_url, recipient, phone_id):
+    """Send image message using WhatsApp media URL"""
+    url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
+    headers = {
+        'Authorization': f'Bearer {wa_token}',
+        'Content-Type': 'application/json'
+    }
+    
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": recipient,
+        "type": "image",
+        "image": {
+            "link": image_url
+        }
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        logging.info(f"Image sent successfully to {recipient}")
+        return True
+    except Exception as e:
+        logging.error(f"Failed to send image: {e}")
+        return False
         
 
 def handle_cupcake_inquiry(prompt, user_data, phone_id):
@@ -2036,19 +2092,7 @@ def webhook():
                                     image = message.get('image', {})
                                     image_id = image.get('id')
                                     if image_id:
-                                        # Get image URL from WhatsApp API
-                                        url = f"https://graph.facebook.com/v19.0/{image_id}"
-                                        headers = {'Authorization': f'Bearer {wa_token}'}
-                                        try:
-                                            response = requests.get(url, headers=headers)
-                                            if response.status_code == 200:
-                                                image_data = response.json()
-                                                image_url = image_data.get('url')
-                                                if image_url:
-                                                    incoming_text = f"IMAGE:{image_url}"
-                                        except Exception as e:
-                                            logging.error(f"Error fetching image: {e}")
-                                            incoming_text = "IMAGE:received"  # Fallback
+                                        incoming_text = f"IMAGE:{image_id}"
                                 else:
                                     incoming_text = ''
 
