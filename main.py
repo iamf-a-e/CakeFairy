@@ -1216,7 +1216,7 @@ def handle_confirm_order(prompt, user_data, phone_id):
                 'user': user.to_dict(),
                 'selected_item': user_data.get('selected_item'),
                 'timestamp': datetime.now().isoformat(),
-                'status': 'pending_design'  # Changed status to indicate design is pending
+                'status': 'pending'
             }
             
             redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_data))  # 7 days expiration
@@ -1265,13 +1265,22 @@ Please visit www.cakefairy1.com for terms and conditions.
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
-            # FIRST ask for design, THEN ask for proof of payment if needed
-            return handle_design_request("", {
-                'sender': user_data['sender'],
-                'order_number': order_number,
-                'customer_name': user.name,
-                'payment_method': user.payment_method  # Pass payment method for later use
-            }, phone_id)
+            # Check if payment method requires proof of payment (all except collection)
+            if user.payment_method and "collection" not in user.payment_method.lower():
+                # Ask for proof of payment
+                return handle_proof_of_payment("", {
+                    'sender': user_data['sender'],
+                    'order_number': order_number,
+                    'customer_name': user.name,
+                    'payment_method': user.payment_method
+                }, phone_id)
+            else:
+                # For collection payment, go directly to design request
+                return handle_design_request("", {
+                    'sender': user_data['sender'],
+                    'order_number': order_number,
+                    'customer_name': user.name
+                }, phone_id)
             
         else:
             # Restart order process
@@ -1294,6 +1303,7 @@ Please visit www.cakefairy1.com for terms and conditions.
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
 
+
 def handle_design_request(prompt, user_data, phone_id):
     try:
         # This function expects an image from the user
@@ -1310,16 +1320,6 @@ def handle_design_request(prompt, user_data, phone_id):
         # If we have an image, process it
         if prompt and prompt.startswith('IMAGE:'):
             image_id = prompt[6:]  # Remove 'IMAGE:' prefix to get image ID
-            
-            # Update order status to design received
-            order_number = user_data.get('order_number')
-            if order_number:
-                order_data = redis_client.get(f"order:{order_number}")
-                if order_data:
-                    order_json = json.loads(order_data)
-                    order_json['status'] = 'design_received'
-                    order_json['design_image_id'] = image_id
-                    redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_json))
             
             # Notify agent/owner about the design image
             if owner_phone:
@@ -1341,36 +1341,14 @@ Here's the design image they sent:
             # Confirm receipt to customer
             send_message(
                 "✅ Thank you for sending your cake design! "
-                "We've received your image and will use it as reference for your order.",
+                "We've received your image and will use it as reference for your order. "
+                "Our team will contact you if we have any questions about the design.",
                 user_data['sender'],
                 phone_id
             )
             
-            # AFTER design is received, check if payment proof is needed
-            payment_method = user_data.get('payment_method', '')
-            if payment_method and "collection" not in payment_method.lower():
-                # Ask for proof of payment
-                return handle_proof_of_payment("", {
-                    'sender': user_data['sender'],
-                    'order_number': user_data.get('order_number'),
-                    'customer_name': user_data.get('customer_name'),
-                    'payment_method': payment_method
-                }, phone_id)
-            else:
-                # For collection payment, update order status and complete
-                if order_number:
-                    order_data = redis_client.get(f"order:{order_number}")
-                    if order_data:
-                        order_json = json.loads(order_data)
-                        order_json['status'] = 'completed'
-                        redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_json))
-                
-                send_message(
-                    "Your order is now complete! We'll contact you when your cake is ready for collection.",
-                    user_data['sender'],
-                    phone_id
-                )
-                return handle_restart_confirmation("", user_data, phone_id)
+            # Now go to restart confirmation
+            return handle_restart_confirmation("", user_data, phone_id)
         
         # Initial entry - ask for design
         send_message(
@@ -1392,6 +1370,7 @@ Here's the design image they sent:
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return handle_restart_confirmation("", user_data, phone_id)
 
+
 def handle_proof_of_payment(prompt, user_data, phone_id):
     try:
         # This function expects an image from the user
@@ -1408,16 +1387,6 @@ def handle_proof_of_payment(prompt, user_data, phone_id):
         # If we have an image, process it
         if prompt and prompt.startswith('IMAGE:'):
             image_id = prompt[6:]  # Remove 'IMAGE:' prefix to get image ID
-            
-            # Update order status to payment received and completed
-            order_number = user_data.get('order_number')
-            if order_number:
-                order_data = redis_client.get(f"order:{order_number}")
-                if order_data:
-                    order_json = json.loads(order_data)
-                    order_json['status'] = 'completed'
-                    order_json['payment_image_id'] = image_id
-                    redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_json))
             
             # Notify agent/owner about the proof of payment
             if owner_phone:
@@ -1437,17 +1406,17 @@ Here's the proof of payment they sent:
                 # Then send the actual image immediately after the message
                 send_image_by_id(image_id, owner_phone, phone_id)
             
-            # Confirm receipt to customer and complete order
+            # Confirm receipt to customer
             send_message(
                 "✅ Thank you for sending your proof of payment! "
-                "We've received your payment confirmation and your order is now complete. "
-                "Our team will contact you when your cake is ready.",
+                "We've received your payment confirmation and will process your order. "
+                "Our team will contact you if we have any questions.",
                 user_data['sender'],
                 phone_id
             )
             
-            # Now go to restart confirmation
-            return handle_restart_confirmation("", user_data, phone_id)
+            # Now go to design request
+            return handle_design_request("", user_data, phone_id)
         
         # Initial entry - ask for proof of payment
         send_message(
@@ -1468,8 +1437,7 @@ Here's the proof of payment they sent:
         logging.error(f"Error in handle_proof_of_payment: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return handle_restart_confirmation("", user_data, phone_id)
-
-       
+        
 
 def send_image_by_id(image_id, recipient, phone_id):
     """Send image using WhatsApp media ID"""
