@@ -665,20 +665,17 @@ def handle_restart_confirmation(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {'step': 'goodbye'})
             return {'step': 'goodbye'}
 
-        # At the end of a successful confirm
-        send_message(
-            "✅ Thank you! Please send us a picture of the cake design you want.",
+        # Any other input -> re-send buttons
+        send_button_message(
+            "Is there anything else I can help you with?",
+            [
+                {"id": "restart_yes", "title": "Yes"},
+                {"id": "restart_no", "title": "No"}
+            ],
             user_data['sender'],
             phone_id
         )
-        
-        update_user_state(user_data['sender'], {
-            'step': 'awaiting_design_picture',
-            'user': user.to_dict(),
-            'order_number': order_number
-        })
-        return {'step': 'awaiting_design_picture', 'user': user.to_dict()}
-
+        return {'step': 'restart_confirmation'}
 
     except Exception as e:
         logging.error(f"Error in handle_restart_confirmation: {e}")
@@ -1232,7 +1229,7 @@ def handle_confirm_order(prompt, user_data, phone_id):
 
 Thank you for your order, {user.name}! Your order has been received and is being processed.
 
-We'll contact you at {user.phone} if we need any additional information.
+We'll contact you at {user.email or user.phone} if we need any additional information.
 
 *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
 
@@ -1268,7 +1265,7 @@ Please visit www.cakefairy1.com for terms and conditions.
                 send_message(agent_notification, owner_phone, phone_id)
             
             # Ask if they need anything else (Yes/No)
-            return awaiting_design_picture("", user_data, phone_id)
+            return handle_restart_confirmation("", user_data, phone_id)
             
         else:
             # Restart order process
@@ -1958,8 +1955,6 @@ def webhook():
                                         incoming_text = selected.get('id') or selected.get('title')
                                     else:
                                         incoming_text = ''
-
-                                
                                 elif message.get('type') == 'text':
                                     incoming_text = message.get('text', {}).get('body', '')
                                 else:
@@ -1979,43 +1974,6 @@ def webhook():
                                     print(f"New state: {new_state}")
                                     if new_state != user_data_obj:
                                         update_user_state(sender, new_state)
-
-                                elif message.get('type') == 'image':
-                                    incoming_text = "[image]"
-                                    image_id = message['image'].get('id')
-                                    image_url = message['image'].get('link')
-                                    # Save so we can forward
-                                    user_data_obj = get_user_state(sender)
-                                    if user_data_obj.get('step') == 'awaiting_design_picture':
-                                        # Forward to agent
-                                        if owner_phone:
-                                            send_message(f"📸 Customer {sender} sent a cake design picture for order {user_data_obj.get('order_number')}", owner_phone, phone_id)
-                                            # Forward image itself
-                                            url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
-                                            headers = {
-                                                'Authorization': f'Bearer {wa_token}',
-                                                'Content-Type': 'application/json'
-                                            }
-                                            data = {
-                                                "messaging_product": "whatsapp",
-                                                "to": owner_phone,
-                                                "type": "image",
-                                                "image": {"link": image_url}
-                                            }
-                                            requests.post(url, headers=headers, json=data)
-                                
-                                        # Ask customer the final question
-                                        send_button_message(
-                                            "Is there anything else I can help you with?",
-                                            [
-                                                {"id": "restart_yes", "title": "Yes"},
-                                                {"id": "restart_no", "title": "No"}
-                                            ],
-                                            sender,
-                                            phone_id
-                                        )
-                                        update_user_state(sender, {'step': 'restart_confirmation'})                                        
-
             
             return jsonify({'status': 'success'}), 200
             
