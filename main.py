@@ -1363,7 +1363,7 @@ Here's the design image they sent:
 def download_and_send_image(image_id, recipient, phone_id):
     """Download image from WhatsApp and send it to recipient"""
     try:
-        # Get image URL from WhatsApp API
+        # First get the media URL from WhatsApp API
         url = f"https://graph.facebook.com/v19.0/{image_id}"
         headers = {'Authorization': f'Bearer {wa_token}'}
         
@@ -1373,21 +1373,35 @@ def download_and_send_image(image_id, recipient, phone_id):
             image_url = image_data.get('url')
             
             if image_url:
-                # Download the image
+                # Download the image content
                 image_response = requests.get(image_url, headers=headers)
                 if image_response.status_code == 200:
-                    # Save temporarily or process as needed
-                    # For now, we'll use the URL approach but WhatsApp can handle media URLs
-                    send_image_message(image_url, recipient, phone_id)
-                    return True
+                    # Upload the media to WhatsApp first
+                    upload_url = f"https://graph.facebook.com/v19.0/{phone_id}/media"
+                    upload_data = {
+                        'messaging_product': 'whatsapp',
+                        'file': image_response.content,
+                        'type': 'image/jpeg'
+                    }
+                    
+                    upload_response = requests.post(upload_url, headers=headers, data=upload_data)
+                    if upload_response.status_code == 200:
+                        media_id = upload_response.json().get('id')
+                        if media_id:
+                            # Now send using the uploaded media ID
+                            return send_image_message(media_id, recipient, phone_id)
+                    
+        logging.error(f"Failed to process image {image_id}")
+        return False
                     
     except Exception as e:
         logging.error(f"Error downloading image: {e}")
+        logging.error(traceback.format_exc())
     
     return False
 
-def send_image_message(image_url, recipient, phone_id):
-    """Send image message using WhatsApp media URL"""
+def send_image_message(media_id, recipient, phone_id):
+    """Send image message using WhatsApp media ID"""
     url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
     headers = {
         'Authorization': f'Bearer {wa_token}',
@@ -1400,7 +1414,7 @@ def send_image_message(image_url, recipient, phone_id):
         "to": recipient,
         "type": "image",
         "image": {
-            "link": image_url
+            "id": media_id
         }
     }
     
@@ -1411,6 +1425,8 @@ def send_image_message(image_url, recipient, phone_id):
         return True
     except Exception as e:
         logging.error(f"Failed to send image: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            logging.error(f"Response: {e.response.text}")
         return False
         
 
