@@ -1202,6 +1202,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
 
+# Modify the handle_confirm_order function to ask for design first, then payment proof
 def handle_confirm_order(prompt, user_data, phone_id):
     try:
         if "yes" in prompt.lower() or "confirm_yes" in prompt:
@@ -1265,22 +1266,13 @@ Please visit www.cakefairy1.com for terms and conditions.
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
-            # Check if payment method requires proof of payment (all except collection)
-            if user.payment_method and "collection" not in user.payment_method.lower():
-                # Ask for proof of payment
-                return handle_proof_of_payment("", {
-                    'sender': user_data['sender'],
-                    'order_number': order_number,
-                    'customer_name': user.name,
-                    'payment_method': user.payment_method
-                }, phone_id)
-            else:
-                # For collection payment, go directly to design request
-                return handle_design_request("", {
-                    'sender': user_data['sender'],
-                    'order_number': order_number,
-                    'customer_name': user.name
-                }, phone_id)
+            # Always ask for cake design first, regardless of payment method
+            return handle_design_request("", {
+                'sender': user_data['sender'],
+                'order_number': order_number,
+                'customer_name': user.name,
+                'payment_method': user.payment_method
+            }, phone_id)
             
         else:
             # Restart order process
@@ -1303,7 +1295,7 @@ Please visit www.cakefairy1.com for terms and conditions.
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
 
-
+# Modify the handle_design_request function to handle payment proof after design
 def handle_design_request(prompt, user_data, phone_id):
     try:
         # This function expects an image from the user
@@ -1341,14 +1333,29 @@ Here's the design image they sent:
             # Confirm receipt to customer
             send_message(
                 "✅ Thank you for sending your cake design! "
-                "We've received your image and will use it as reference for your order. "
-                "Our team will contact you if we have any questions about the design.",
+                "We've received your image and will use it as reference for your order.",
                 user_data['sender'],
                 phone_id
             )
             
-            # Now go to restart confirmation
-            return handle_restart_confirmation("", user_data, phone_id)
+            # Check if payment method requires proof of payment (all except collection)
+            payment_method = user_data.get('payment_method', '')
+            if payment_method and "collection" not in payment_method.lower():
+                # Ask for proof of payment after design is received
+                return handle_proof_of_payment("", {
+                    'sender': user_data['sender'],
+                    'order_number': user_data.get('order_number'),
+                    'customer_name': user_data.get('customer_name'),
+                    'payment_method': payment_method
+                }, phone_id)
+            else:
+                # For collection payment, go directly to restart confirmation
+                send_message(
+                    "Your order is now complete! We'll prepare your cake for collection.",
+                    user_data['sender'],
+                    phone_id
+                )
+                return handle_restart_confirmation("", user_data, phone_id)
         
         # Initial entry - ask for design
         send_message(
@@ -1370,7 +1377,7 @@ Here's the design image they sent:
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return handle_restart_confirmation("", user_data, phone_id)
 
-
+# Modify the handle_proof_of_payment function to go to restart confirmation after payment proof
 def handle_proof_of_payment(prompt, user_data, phone_id):
     try:
         # This function expects an image from the user
@@ -1415,8 +1422,8 @@ Here's the proof of payment they sent:
                 phone_id
             )
             
-            # Now go to design request
-            return handle_design_request("", user_data, phone_id)
+            # Now go to restart confirmation
+            return handle_restart_confirmation("", user_data, phone_id)
         
         # Initial entry - ask for proof of payment
         send_message(
