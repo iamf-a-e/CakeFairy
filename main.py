@@ -1265,12 +1265,22 @@ Please visit www.cakefairy1.com for terms and conditions.
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
-            # Ask if they need anything else (Yes/No)
-            return handle_design_request("", {
-                'sender': user_data['sender'],
-                'order_number': order_number,
-                'customer_name': user.name
-            }, phone_id)
+            # Check if payment method requires proof of payment (all except collection)
+            if user.payment_method and "collection" not in user.payment_method.lower():
+                # Ask for proof of payment
+                return handle_proof_of_payment("", {
+                    'sender': user_data['sender'],
+                    'order_number': order_number,
+                    'customer_name': user.name,
+                    'payment_method': user.payment_method
+                }, phone_id)
+            else:
+                # For collection payment, go directly to design request
+                return handle_design_request("", {
+                    'sender': user_data['sender'],
+                    'order_number': order_number,
+                    'customer_name': user.name
+                }, phone_id)
             
         else:
             # Restart order process
@@ -1359,6 +1369,75 @@ Here's the design image they sent:
         logging.error(f"Error in handle_design_request: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return handle_restart_confirmation("", user_data, phone_id)
+
+
+def handle_proof_of_payment(prompt, user_data, phone_id):
+    try:
+        # This function expects an image from the user
+        # If we get text instead of an image, prompt again
+        if prompt and not prompt.startswith('IMAGE:'):
+            send_message(
+                "Please send a picture or screenshot of your proof of payment. "
+                "This could be a transaction confirmation, receipt, or payment screenshot.",
+                user_data['sender'],
+                phone_id
+            )
+            return {'step': 'proof_of_payment'}
+        
+        # If we have an image, process it
+        if prompt and prompt.startswith('IMAGE:'):
+            image_id = prompt[6:]  # Remove 'IMAGE:' prefix to get image ID
+            
+            # Notify agent/owner about the proof of payment
+            if owner_phone:
+                # First send the informational message
+                payment_msg = f"""
+💳 *PROOF OF PAYMENT RECEIVED* 💳
+
+*Order Number:* {user_data.get('order_number', 'N/A')}
+*Customer:* {user_data.get('customer_name', 'N/A')}
+*Phone:* {user_data['sender']}
+*Payment Method:* {user_data.get('payment_method', 'N/A')}
+
+Here's the proof of payment they sent:
+                """
+                send_message(payment_msg, owner_phone, phone_id)
+                
+                # Then send the actual image immediately after the message
+                send_image_by_id(image_id, owner_phone, phone_id)
+            
+            # Confirm receipt to customer
+            send_message(
+                "✅ Thank you for sending your proof of payment! "
+                "We've received your payment confirmation and will process your order. "
+                "Our team will contact you if we have any questions.",
+                user_data['sender'],
+                phone_id
+            )
+            
+            # Now go to design request
+            return handle_design_request("", user_data, phone_id)
+        
+        # Initial entry - ask for proof of payment
+        send_message(
+            "💳 *PROOF OF PAYMENT REQUIRED* 💳\n\n"
+            "Please send a picture or screenshot of your payment confirmation. "
+            "This could be:\n"
+            "• Ecocash transaction confirmation\n"
+            "• InnBucks payment screenshot\n"
+            "• PayPal receipt\n"
+            "• Any other proof of payment\n\n"
+            "Please send the image now:",
+            user_data['sender'],
+            phone_id
+        )
+        return {'step': 'proof_of_payment'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_proof_of_payment: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return handle_restart_confirmation("", user_data, phone_id)
+        
 
 def send_image_by_id(image_id, recipient, phone_id):
     """Send image using WhatsApp media ID"""
@@ -1971,6 +2050,9 @@ def handle_message(prompt, user_data, phone_id):
 
         elif current_step == 'design_request':
             return handle_design_request(prompt, user_data, phone_id)
+
+        elif current_step == 'proof_of_payment':
+            return handle_proof_of_payment(prompt, user_data, phone_id)
 
         elif current_step == 'choose_payment':
             # Parse payment option
