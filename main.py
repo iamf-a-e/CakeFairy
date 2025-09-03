@@ -1353,13 +1353,7 @@ Here's the design image they sent:
         # Initial entry - ask for design
         send_message(
             "🎨 *DESIGN SUBMISSION* 🎨\n\n"
-            "To help us create your perfect cake, please send a picture of the design you'd like. "
-            "This could be:\n"
-            "• A photo of a previous cake you loved\n"
-            "• A design from Pinterest or Instagram\n"
-            "• A drawing or sketch of your idea\n"
-            "• Any image that shows the style you want\n\n"
-            "Please send the image now:",
+            "To help us create your perfect cake, please send a picture of the design you'd like.",
             user_data['sender'],
             phone_id
         )
@@ -1421,13 +1415,7 @@ Here's the proof of payment they sent:
         # Initial entry - ask for proof of payment
         send_message(
             "💳 *PROOF OF PAYMENT REQUIRED* 💳\n\n"
-            "Please send a picture or screenshot of your payment confirmation. "
-            "This could be:\n"
-            "• Ecocash transaction confirmation\n"
-            "• InnBucks payment screenshot\n"
-            "• PayPal receipt\n"
-            "• Any other proof of payment\n\n"
-            "Please send the image now:",
+            "Please send a picture or screenshot of your payment confirmation.",
             user_data['sender'],
             phone_id
         )
