@@ -1266,14 +1266,21 @@ Please visit www.cakefairy1.com for terms and conditions.
                 send_message(agent_notification, owner_phone, phone_id)
             
             # Check if payment method requires proof of payment (all except collection)
-            # Always ask for design first
-            return handle_design_request("", {
-                'sender': user_data['sender'],
-                'order_number': order_number,
-                'customer_name': user.name,
-                'payment_method': user.payment_method
-            }, phone_id)
-
+            if user.payment_method and "collection" not in user.payment_method.lower():
+                # Ask for proof of payment
+                return handle_proof_of_payment("", {
+                    'sender': user_data['sender'],
+                    'order_number': order_number,
+                    'customer_name': user.name,
+                    'payment_method': user.payment_method
+                }, phone_id)
+            else:
+                # For collection payment, go directly to design request
+                return handle_design_request("", {
+                    'sender': user_data['sender'],
+                    'order_number': order_number,
+                    'customer_name': user.name
+                }, phone_id)
             
         else:
             # Restart order process
@@ -1339,10 +1346,7 @@ Here's the design image they sent:
                 user_data['sender'],
                 phone_id
             )
-
-            if user_data.get('payment_method') and "collection" not in user_data['payment_method'].lower():
-                return handle_proof_of_payment("", user_data, phone_id)
-                
+            
             # Now go to restart confirmation
             return handle_restart_confirmation("", user_data, phone_id)
         
