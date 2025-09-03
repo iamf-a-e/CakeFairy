@@ -1229,7 +1229,7 @@ def handle_confirm_order(prompt, user_data, phone_id):
 
 Thank you for your order, {user.name}! Your order has been received and is being processed.
 
-We'll contact you at {user.email or user.phone} if we need any additional information.
+We'll contact you at {user.phone} if we need any additional information.
 
 *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
 
@@ -1265,7 +1265,11 @@ Please visit www.cakefairy1.com for terms and conditions.
                 send_message(agent_notification, owner_phone, phone_id)
             
             # Ask if they need anything else (Yes/No)
-            return handle_restart_confirmation("", user_data, phone_id)
+            return handle_design_request("", {
+                'sender': user_data['sender'],
+                'order_number': order_number,
+                'customer_name': user.name
+            }, phone_id)
             
         else:
             # Restart order process
@@ -1287,6 +1291,72 @@ Please visit www.cakefairy1.com for terms and conditions.
         logging.error(f"Error in handle_confirm_order: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
+
+
+def handle_design_request(prompt, user_data, phone_id):
+    try:
+        # This function expects an image from the user
+        # If we get text instead of an image, prompt again
+        if prompt and not prompt.startswith('IMAGE:'):
+            send_message(
+                "Please send a picture of the cake design you'd like. "
+                "You can take a photo or send an image from your gallery.",
+                user_data['sender'],
+                phone_id
+            )
+            return {'step': 'design_request'}
+        
+        # If we have an image (handled in webhook), process it
+        if prompt and prompt.startswith('IMAGE:'):
+            image_url = prompt[6:]  # Remove 'IMAGE:' prefix
+            
+            # Notify agent/owner about the design image
+            if owner_phone:
+                design_msg = f"""
+🎨 *NEW CAKE DESIGN SUBMITTED* 🎨
+
+*Order Number:* {user_data.get('order_number', 'N/A')}
+*Customer:* {user_data.get('customer_name', 'N/A')}
+*Phone:* {user_data['sender']}
+
+*Design Image:* {image_url}
+
+Please review the design and contact the customer if needed.
+                """
+                send_message(design_msg, owner_phone, phone_id)
+            
+            # Confirm receipt to customer
+            send_message(
+                "✅ Thank you for sending your cake design! "
+                "We've received your image and will use it as reference for your order. "
+                "Our team will contact you if we have any questions about the design.",
+                user_data['sender'],
+                phone_id
+            )
+            
+            # Now go to restart confirmation
+            return handle_restart_confirmation("", user_data, phone_id)
+        
+        # Initial entry - ask for design
+        send_message(
+            "🎨 *DESIGN SUBMISSION* 🎨\n\n"
+            "To help us create your perfect cake, please send a picture of the design you'd like. "
+            "This could be:\n"
+            "• A photo of a previous cake you loved\n"
+            "• A design from Pinterest or Instagram\n"
+            "• A drawing or sketch of your idea\n"
+            "• Any image that shows the style you want\n\n"
+            "Please send the image now:",
+            user_data['sender'],
+            phone_id
+        )
+        return {'step': 'design_request'}
+            
+    except Exception as e:
+        logging.error(f"Error in handle_design_request: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return handle_restart_confirmation("", user_data, phone_id)
+        
 
 def handle_cupcake_inquiry(prompt, user_data, phone_id):
     try:
@@ -1819,6 +1889,9 @@ def handle_message(prompt, user_data, phone_id):
         elif current_step == 'get_order_info':
             return handle_get_order_info(prompt, user_data, phone_id)
 
+        elif current_step == 'design_request':
+            return handle_design_request(prompt, user_data, phone_id)
+
         elif current_step == 'choose_payment':
             # Parse payment option
             selected_option = None
@@ -1957,6 +2030,25 @@ def webhook():
                                         incoming_text = ''
                                 elif message.get('type') == 'text':
                                     incoming_text = message.get('text', {}).get('body', '')
+
+                                elif message.get('type') == 'image':
+                                # Handle image messages for design requests
+                                image = message.get('image', {})
+                                image_id = image.get('id')
+                                if image_id:
+                                    # Get image URL from WhatsApp API
+                                    url = f"https://graph.facebook.com/v19.0/{image_id}"
+                                    headers = {'Authorization': f'Bearer {wa_token}'}
+                                    try:
+                                        response = requests.get(url, headers=headers)
+                                        if response.status_code == 200:
+                                            image_data = response.json()
+                                            image_url = image_data.get('url')
+                                            if image_url:
+                                                incoming_text = f"IMAGE:{image_url}"
+                                    except Exception as e:
+                                        logging.error(f"Error fetching image: {e}")
+                                        incoming_text = "IMAGE:received"  # Fallback
                                 else:
                                     incoming_text = ''
 
