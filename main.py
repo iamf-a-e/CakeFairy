@@ -1268,7 +1268,7 @@ Please visit www.cakefairy1.com for terms and conditions.
             # Check if payment method requires proof of payment (all except collection)
             if user.payment_method and "collection" not in user.payment_method.lower():
                 # Ask for proof of payment
-                return handle_design_request("", {
+                return handle_proof_of_payment("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
                     'customer_name': user.name,
@@ -1306,15 +1306,6 @@ Please visit www.cakefairy1.com for terms and conditions.
 
 def handle_design_request(prompt, user_data, phone_id):
     try:
-        if user.payment_method and "collection" not in user.payment_method.lower():
-                # Ask for proof of payment
-                return handle_proof_of_payment("", {
-                    'sender': user_data['sender'],
-                    'order_number': order_number,
-                    'customer_name': user.name,
-                    'payment_method': user.payment_method
-                }, phone_id)
-            
         # This function expects an image from the user
         # If we get text instead of an image, prompt again
         if prompt and not prompt.startswith('IMAGE:'):
@@ -1425,7 +1416,7 @@ Here's the proof of payment they sent:
             )
             
             # Now go to design request
-            return handle_restart_confirmation("", user_data, phone_id)
+            return handle_design_request("", user_data, phone_id)
         
         # Initial entry - ask for proof of payment
         send_message(
