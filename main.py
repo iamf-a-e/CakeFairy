@@ -2032,23 +2032,23 @@ def webhook():
                                     incoming_text = message.get('text', {}).get('body', '')
 
                                 elif message.get('type') == 'image':
-                                # Handle image messages for design requests
-                                image = message.get('image', {})
-                                image_id = image.get('id')
-                                if image_id:
-                                    # Get image URL from WhatsApp API
-                                    url = f"https://graph.facebook.com/v19.0/{image_id}"
-                                    headers = {'Authorization': f'Bearer {wa_token}'}
-                                    try:
-                                        response = requests.get(url, headers=headers)
-                                        if response.status_code == 200:
-                                            image_data = response.json()
-                                            image_url = image_data.get('url')
-                                            if image_url:
-                                                incoming_text = f"IMAGE:{image_url}"
-                                    except Exception as e:
-                                        logging.error(f"Error fetching image: {e}")
-                                        incoming_text = "IMAGE:received"  # Fallback
+                                    # Handle image messages for design requests
+                                    image = message.get('image', {})
+                                    image_id = image.get('id')
+                                    if image_id:
+                                        # Get image URL from WhatsApp API
+                                        url = f"https://graph.facebook.com/v19.0/{image_id}"
+                                        headers = {'Authorization': f'Bearer {wa_token}'}
+                                        try:
+                                            response = requests.get(url, headers=headers)
+                                            if response.status_code == 200:
+                                                image_data = response.json()
+                                                image_url = image_data.get('url')
+                                                if image_url:
+                                                    incoming_text = f"IMAGE:{image_url}"
+                                        except Exception as e:
+                                            logging.error(f"Error fetching image: {e}")
+                                            incoming_text = "IMAGE:received"  # Fallback
                                 else:
                                     incoming_text = ''
 
