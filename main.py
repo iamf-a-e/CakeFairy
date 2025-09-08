@@ -1159,18 +1159,18 @@ Please visit www.cakefairy1.com for terms and conditions.
             
         else:
             # Restart order process
-            send_message("Let's start over with your order. Please provide your full name:", user_data['sender'], phone_id)
+            send_message("Let's start over with your order. When would you like the order? e.g 13/09/2025", user_data['sender'], phone_id)
             user = User(name="", phone=user_data['sender'])
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'name',
+                'field': 'theme',
                 'selected_item': user_data.get('selected_item')
             })
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'name'
+                'field': 'theme'
             }
             
     except Exception as e:
