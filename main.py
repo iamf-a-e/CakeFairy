@@ -45,8 +45,7 @@ class MainMenuOptions(Enum):
 
 class PaymentOptions(Enum):
     ECOCASH = "Ecocash"
-    INNBUCKS = "InnBucks"
-    PAYPAL = "PayPal"
+    INNBUCKS = "InnBucks"   
     COLLECTION = "On Collection"
 
 class CakeTypeOptions(Enum):
@@ -136,22 +135,15 @@ class User:
 
     def to_dict(self):
         return {
+            "due_date": self.due_date,
+            "theme": self.theme,
+            "due_time": self.due_time,
+            "message": self.message,
             "name": self.name,
             "phone": self.phone,
             "email": self.email,
-            "cake_type": self.cake_type.value if self.cake_type else None,
-            "cake_size": self.cake_size,
-            "flavor": self.flavor,
-            "filling": self.filling,
-            "icing": self.icing,
-            "shape": self.shape,
-            "theme": self.theme,
-            "due_date": self.due_date,
-            "due_time": self.due_time,
-            "message": self.message,
-            "colors": self.colors,
             "special_requests": self.special_requests,
-            "referral_source": self.referral_source,
+            "colors": self.colors,       
             "callback_requested": self.callback_requested,
             "payment_method": self.payment_method
         }
