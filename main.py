@@ -935,7 +935,7 @@ def handle_order_decision(prompt, user_data, phone_id):
     try:
         if "yes" in prompt.lower() or "order" in prompt.lower():
             send_message(
-                "Great! Let's start your order. Please provide your full name:",
+                "Great! Let's start your order. When do you need the cake? e.g 13/09/2025",
                 user_data['sender'],
                 phone_id
             )
@@ -977,7 +977,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'contact',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("Thank you. Please provide your email:", user_data['sender'], phone_id)
+            send_message("Thank you. Please provide the contact person's phone number.", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
