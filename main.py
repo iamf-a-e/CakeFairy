@@ -698,26 +698,7 @@ def handle_fresh_cream_menu(prompt, user_data, phone_id):
         if selected_option == FreshCreamOptions.BACK:
             return handle_main_menu(MainMenuOptions.CAKES.value, user_data, phone_id)
             
-        # For tier cakes, show tier options
-        if selected_option in [FreshCreamOptions.SMALL, FreshCreamOptions.LARGE, 
-                              FreshCreamOptions.LARGE_10, FreshCreamOptions.XL, 
-                              FreshCreamOptions.EXTRA_TALL]:
-            tier_msg = "Would you like to see tier cake options for this size?"
-            send_button_message(
-                tier_msg,
-                [
-                    {"id": "tier_yes", "title": "Yes, show tier options"},
-                    {"id": "tier_no", "title": "No, continue with single tier"}
-                ],
-                user_data['sender'],
-                phone_id
-            )
-            update_user_state(user_data['sender'], {
-                'step': 'tier_decision',
-                'selected_option': selected_option.value
-            })
-            return {'step': 'tier_decision'}
-            
+                  
         # For other options, just show the selection
         send_message(
             f"You selected: {selected_option.value}\n\n"
