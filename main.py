@@ -957,7 +957,7 @@ def handle_order_decision(prompt, user_data, phone_id):
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'name'
+                'field': 'theme'
             }
         else:
             send_message(
