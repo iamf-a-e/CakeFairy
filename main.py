@@ -1912,9 +1912,6 @@ def handle_message(prompt, user_data, phone_id):
 *Name:* {user.name}
 *Contact:* {user.email or user.phone}
 *Flavor:* {user.flavor}
-*Filling:* {user.filling}
-*Icing:* {user.icing}
-*Shape:* {user.shape}
 *Theme:* {user.theme}
 *Due Date:* {user.due_date}
 *Due Time:* {user.due_time}
