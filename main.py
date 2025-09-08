@@ -1084,9 +1084,11 @@ def handle_confirm_order(prompt, user_data, phone_id):
 *Order Number:* {order_number}
 *Item:* {user_data.get('selected_item', 'Custom Cake')}
 
-Thank you for your order, {user.name}! Your order has been received and is being processed.
+Thank you for your order, {user.contact_name or user.name}!
+Your order has been received and is being processed.
 
-We'll contact you at {user.phone} if we need any additional information.
+We'll contact {user.contact_name or 'you'} at {user.contact_number or user.phone} 
+if we need any additional information.
 
 *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
 
@@ -1101,15 +1103,12 @@ Please visit www.cakefairy1.com for terms and conditions.
 📋 *NEW CAKE ORDER* 📋
 
 *Order Number:* {order_number}
-*Customer:* {user.name}
-*Phone:* {user.phone}
+*Customer:* {user.contact_name or user.name}
+*Contact Number:* {user.contact_number or user.phone}
 *Email:* {user.email}
 *Item:* {user_data.get('selected_item', 'Custom Cake')}
 *Theme:* {user.theme}
 *Flavor:* {user.flavor}
-*Filling:* {user.filling}
-*Icing:* {user.icing}
-*Shape:* {user.shape}
 *Due Date:* {user.due_date}
 *Due Time:* {user.due_time}
 *Colors:* {user.colors}
@@ -1117,30 +1116,27 @@ Please visit www.cakefairy1.com for terms and conditions.
 *Referral Source:* {user.referral_source}
 *Special Requests:* {user.special_requests}
 *Payment:* {user.payment_method}
-
                 """
                 send_message(agent_notification, owner_phone, phone_id)
             
-            # Check if payment method requires proof of payment (all except collection)
+            # Payment check
             if user.payment_method and "collection" not in user.payment_method.lower():
-                # Ask for proof of payment
                 return handle_proof_of_payment("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
-                    'customer_name': user.name,
+                    'customer_name': user.contact_name or user.name,
                     'payment_method': user.payment_method
                 }, phone_id)
             else:
-                # For collection payment, go directly to design request
                 return handle_design_request("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
-                    'customer_name': user.name
+                    'customer_name': user.contact_name or user.name
                 }, phone_id)
             
         else:
             # Restart order process
-            send_message("Let's start over with your order. When would you like the order? e.g 13/09/2025", user_data['sender'], phone_id)
+            send_message("Let's start over with your order. Please provide the theme for your cake:", user_data['sender'], phone_id)
             user = User(name="", phone=user_data['sender'])
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
@@ -1148,16 +1144,13 @@ Please visit www.cakefairy1.com for terms and conditions.
                 'field': 'theme',
                 'selected_item': user_data.get('selected_item')
             })
-            return {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'theme'
-            }
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'theme'}
             
     except Exception as e:
         logging.error(f"Error in handle_confirm_order: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
+
 
 
 def handle_design_request(prompt, user_data, phone_id):
