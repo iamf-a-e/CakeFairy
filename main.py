@@ -963,10 +963,10 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'due_time',
+                'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What time do you need the cake? (e.g., 2:00 PM):", user_data['sender'], phone_id)
+            
 
             selected_item = (user_data.get('selected_item') or "").lower()
             if "cake fairy" in selected_item:
@@ -988,10 +988,10 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'filling',
+                'field': 'due_time',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("The filling available is fresh cream, confirm by sending fresh cream.", user_data['sender'], phone_id)
+            send_message("What time do you need the cake? e.g 12pm", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
