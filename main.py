@@ -1758,15 +1758,16 @@ def handle_agent_location(prompt, user_data, phone_id):
             send_message("⚠️ Please choose either *Harare* or *Bulawayo*.", user_data['sender'], phone_id)
             return {'step': 'agent_location'}
 
-        # Start session
+        # Start session AND update state
         start_agent_session(user_data['sender'], agent)
-        return {'step': 'agent_chat', 'agent': agent}
+        new_state = {'step': 'agent_chat', 'agent': agent}
+        update_user_state(user_data['sender'], new_state)  # ← ADD THIS LINE
+        return new_state
 
     except Exception as e:
         logging.error(f"Error in handle_agent_location: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
-
 
 
 def human_agent(prompt, user_data, phone_id):
