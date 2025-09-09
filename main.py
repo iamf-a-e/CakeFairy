@@ -1758,9 +1758,11 @@ def handle_agent_location(prompt, user_data, phone_id):
             send_message("⚠️ Please choose either *Harare* or *Bulawayo*.", user_data['sender'], phone_id)
             return {'step': 'agent_location'}
 
-        # Start session - this function already updates the state
-        start_agent_session(user_data['sender'], agent)
-        # Just return the new state, don't call update_user_state again
+        # Send connection messages
+        send_message("✅ You are now connected to a human agent.", user_data['sender'], phone_id)
+        send_message(f"✅ You are now connected with customer {user_data['sender']}. Send 'exit' to end the chat.", agent, phone_id)
+        
+        # Return the new state - the webhook handler will update it
         return {'step': 'agent_chat', 'agent': agent}
 
     except Exception as e:
@@ -1806,8 +1808,8 @@ def handle_waiting_for_agent(prompt, user_data, phone_id):
 
 
 def start_agent_session(customer, agent):
-    update_user_state(customer, {"step": "agent_chat", "agent": agent})
-    update_user_state(agent, {"step": "agent_chat", "customer": customer})
+    # Remove the update_user_state calls from here
+    # Just send the messages
     send_message("✅ You are now connected to a human agent.", customer, phone_id)
     send_message(f"✅ You are now connected with customer {customer}. Send 'exit' to end the chat.", agent, phone_id)
 
@@ -1827,7 +1829,9 @@ def handle_message(prompt, user_data, phone_id):
         if user_data.get("step") == "agent_chat" and "customer" in user_data:
             customer = user_data["customer"]
             if prompt.lower().strip() == "exit":
-                end_agent_session(customer, sender)
+                # End agent session
+                send_message("👋 The agent has left the chat. You're now back with the bot.", customer, phone_id)
+                send_message(f"👋 Chat with {customer} ended. Handover back to bot.", sender, phone_id)
                 return {"step": "main_menu"}
             else:
                 # Forward agent message to customer
@@ -1836,7 +1840,7 @@ def handle_message(prompt, user_data, phone_id):
         else:
             send_message("⚠️ No active customer session. Please wait for a request.", sender, phone_id)
             return user_data
-
+    
     # ===== CUSTOMER HANDLING =====
     if user_data.get("step") == "agent_chat" and "agent" in user_data:
         agent = user_data["agent"]
