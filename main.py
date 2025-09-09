@@ -967,7 +967,36 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'selected_item': user_data.get('selected_item')
             })
             send_message("What time do you need the cake? (e.g., 2:00 PM):", user_data['sender'], phone_id)
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'due_time'}
+
+            selected_item = (user_data.get('selected_item') or "").lower()
+            if "cake fairy" in selected_item:
+                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
+            elif "double delite" in selected_item:
+                flavor_msg = "Please choose two flavors: chocolate, vanilla, orange, strawberry, or lemon."
+            elif "triple delite" in selected_item:
+                flavor_msg = "Please choose three flavors: chocolate, vanilla, orange, strawberry, or lemon."
+            else:
+                # Default to single flavor prompt if not specified
+                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon."
+        
+            send_message(flavor_msg, user_data['sender'], phone_id)
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'flavor'}
+
+
+        elif current_field == 'flavor':
+            user.flavor = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'filling',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("The filling available is fresh cream, confirm by sending fresh cream.", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'due_time'
+            }
 
         elif current_field == 'due_time':
             user.due_time = prompt
