@@ -962,7 +962,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
 
         # First time entering - ask for theme
         if current_field is None:
-            send_message("Which theme would you like for your cake?", user_data['sender'], phone_id)
+            send_message("Which theme would you like for your cake? e.g Barbie, Frozen", user_data['sender'], phone_id)
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
