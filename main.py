@@ -1758,11 +1758,15 @@ def handle_agent_location(prompt, user_data, phone_id):
             send_message("⚠️ Please choose either *Harare* or *Bulawayo*.", user_data['sender'], phone_id)
             return {'step': 'agent_location'}
 
-        # Send connection messages
+        # Update both parties' states for direct chat
+        update_user_state(user_data['sender'], {'step': 'agent_chat', 'agent': agent})
+        update_user_state(agent, {'step': 'agent_chat', 'customer': user_data['sender']})
+
+        # Send connection messages to both sides
         send_message("✅ You are now connected to a human agent.", user_data['sender'], phone_id)
         send_message(f"✅ You are now connected with customer {user_data['sender']}. Send 'exit' to end the chat.", agent, phone_id)
-        
-        # Return the new state - the webhook handler will update it
+
+        # Return the new state for the customer
         return {'step': 'agent_chat', 'agent': agent}
 
     except Exception as e:
@@ -1869,12 +1873,18 @@ def handle_message(prompt, user_data, phone_id):
         if prompt_lower.strip() in {"restart", "start over", "main menu", "menu", "hie", "hey", "hi"}:
             return handle_welcome("", user_data, phone_id)
             
-        # Check for agent request at any point
+        # Determine current step early
+        current_step = user_data.get('step', 'welcome')
+
+        # If we're already in agent location selection, handle that FIRST to avoid re-prompt loops
+        if current_step == 'agent_location':
+            return handle_agent_location(prompt, user_data, phone_id)
+
+        # Check for agent request at any point (but not during location selection handled above)
         if any(word in prompt_lower for word in ["agent", "human", "representative", "speak to someone"]):
             return human_agent(prompt, user_data, phone_id)
-        
+
         # Route based on current step
-        current_step = user_data.get('step', 'welcome')
         
         if current_step == 'welcome':
             return handle_welcome(prompt, user_data, phone_id)
