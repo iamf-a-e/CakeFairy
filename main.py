@@ -1833,7 +1833,9 @@ def handle_message(prompt, user_data, phone_id):
         if user_data.get("step") == "agent_chat" and "customer" in user_data:
             customer = user_data["customer"]
             if prompt.lower().strip() == "exit":
-                # End agent session
+                # End agent session - update BOTH agent and customer states
+                update_user_state(customer, {"step": "main_menu"})
+                update_user_state(sender, {"step": "main_menu"})
                 send_message("👋 The agent has left the chat. You're now back with the bot.", customer, phone_id)
                 send_message(f"👋 Chat with {customer} ended. Handover back to bot.", sender, phone_id)
                 return {"step": "main_menu"}
@@ -1848,18 +1850,17 @@ def handle_message(prompt, user_data, phone_id):
     # ===== CUSTOMER HANDLING =====
     if user_data.get("step") == "agent_chat" and "agent" in user_data:
         agent = user_data["agent"]
-        
-        # Check if the agent is still available (not in main_menu state)
+        # Check if agent ended the chat (customer might not have received the exit message yet)
         agent_state = get_user_state(agent)
         if agent_state.get("step") != "agent_chat":
-            # Agent has ended the chat, return customer to main menu
-            send_message("👋 The agent has ended the chat. You're now back with the bot.", user_data['sender'], phone_id)
-            return {'step': 'main_menu'}
+            # Agent has already ended the chat, return customer to main menu
+            update_user_state(sender, {"step": "main_menu"})
+            send_message("👋 The agent has ended the chat. You're now back with the bot.", sender, phone_id)
+            return {"step": "main_menu"}
         
         # Forward customer message to agent
         send_message(f"🧑 Customer {sender}: {prompt}", agent, phone_id)
         return user_data
-        
 
     try:
         print(f"Handling message: '{prompt}' for user: {user_data}")
