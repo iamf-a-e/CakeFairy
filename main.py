@@ -1144,7 +1144,6 @@ Please visit www.cakefairy1.com for terms and conditions.
 *Due Time:* {user.due_time}
 *Colors:* {user.colors}
 *Message:* {user.message}
-*Referral Source:* {user.referral_source}
 *Special Requests:* {user.special_requests}
 *Payment:* {user.payment_method}
                 """
@@ -1970,18 +1969,18 @@ def handle_message(prompt, user_data, phone_id):
             order_summary = f"""
         🎂 *ORDER SUMMARY* 🎂
         
-        *Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
-        *Name:* {user.name}
-        *Contact:* {user.contact_number}
-        *Flavor:* {user.flavor}
-        *Theme:* {user.theme}
-        *Due Time:* {user.due_time}
-        *Colors:* {user.colors}
-        *Message:* {user.message}
-        *Special Requests:* {user.special_requests}
-        *Payment:* {user.payment_method}
+*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
+*Name:* {user.name}
+*Contact:* {user.contact_number}
+*Flavor:* {user.flavor}
+*Theme:* {user.theme}
+*Due Time:* {user.due_time}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Special Requests:* {user.special_requests}
+*Payment:* {user.payment_method}
         
-        *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
         
         Please confirm if this order is correct.
         """
