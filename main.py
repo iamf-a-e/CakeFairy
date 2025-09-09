@@ -926,7 +926,7 @@ def handle_order_decision(prompt, user_data, phone_id):
     try:
         if "yes" in prompt.lower() or "order" in prompt.lower():
             send_message(
-                "Great! Let's start your order. When do you need the cake? e.g 13/09/2025",
+                "Great! Let's start your order. Which theme do you want for the cake? e.g Barbie",
                 user_data['sender'],
                 phone_id
             )
@@ -960,18 +960,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
         user = User.from_dict(user_data['user'])
         current_field = user_data.get('field')
 
-        # First time entering - ask for theme
-        if current_field is None:
-            send_message("Which theme would you like for your cake? e.g Barbie, Frozen", user_data['sender'], phone_id)
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'theme',
-                'selected_item': user_data.get('selected_item')
-            })
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'theme'}
-
-        elif current_field == 'theme':
+        if current_field == 'theme':
             user.theme = prompt
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
@@ -980,7 +969,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'selected_item': user_data.get('selected_item')
             })
             
-            # Now ask for flavors based on selected item
+
             selected_item = (user_data.get('selected_item') or "").lower()
             if "cake fairy" in selected_item:
                 flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
@@ -995,6 +984,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             send_message(flavor_msg, user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'flavor'}
 
+
         elif current_field == 'flavor':
             user.flavor = prompt
             update_user_state(user_data['sender'], {
@@ -1003,7 +993,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What time do you need the cake? (e.g., 12pm)", user_data['sender'], phone_id)
+            send_message("What time do you need the cake? e.g 12pm", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1018,7 +1008,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'due_time',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What message would you like on the cake? (e.g., Happy Birthday!)", user_data['sender'], phone_id)
+            send_message("What message would you like on the cake? (e.g., Happy Birthday!):", user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'message'}
 
         elif current_field == 'message':
@@ -1026,7 +1016,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'message',
+                'field': 'contact_name',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("Who is the contact person for this order?", user_data['sender'], phone_id)
@@ -1037,7 +1027,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'contact_name',
+                'field': 'contact_number',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("Please provide the contact phone number:", user_data['sender'], phone_id)
@@ -1048,7 +1038,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'contact_number',
+                'field': 'email',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("Please provide the contact email:", user_data['sender'], phone_id)
@@ -1059,7 +1049,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'email',
+                'field': 'special_requests',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("Any special requests or dietary requirements?", user_data['sender'], phone_id)
@@ -1070,7 +1060,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'special_requests',
+                'field': 'colors',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attract an extra charge of $5", user_data['sender'], phone_id)
@@ -1078,12 +1068,6 @@ def handle_get_order_info(prompt, user_data, phone_id):
 
         elif current_field == 'colors':
             user.colors = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'colors',
-                'selected_item': user_data.get('selected_item')
-            })
             # After last step, move to payment
             payment_options = [option.value for option in PaymentOptions]
             send_list_message(
