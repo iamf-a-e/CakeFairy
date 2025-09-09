@@ -1848,6 +1848,14 @@ def handle_message(prompt, user_data, phone_id):
     # ===== CUSTOMER HANDLING =====
     if user_data.get("step") == "agent_chat" and "agent" in user_data:
         agent = user_data["agent"]
+        
+        # Check if the agent is still available (not in main_menu state)
+        agent_state = get_user_state(agent)
+        if agent_state.get("step") != "agent_chat":
+            # Agent has ended the chat, return customer to main menu
+            send_message("👋 The agent has ended the chat. You're now back with the bot.", user_data['sender'], phone_id)
+            return {'step': 'main_menu'}
+        
         # Forward customer message to agent
         send_message(f"🧑 Customer {sender}: {prompt}", agent, phone_id)
         return user_data
