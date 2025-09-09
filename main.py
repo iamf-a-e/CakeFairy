@@ -1986,7 +1986,6 @@ def handle_message(prompt, user_data, phone_id):
         
 *Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
 *Name:* {user.name}
-*Contact:* {user.contact_number}
 *Flavor:* {user.flavor}
 *Theme:* {user.theme}
 *Due Time:* {user.due_time}
@@ -1997,7 +1996,7 @@ def handle_message(prompt, user_data, phone_id):
         
 *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
         
-        Please confirm if this order is correct.
+Please confirm if this order is correct.
         """
         
             send_button_message(
