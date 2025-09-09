@@ -960,17 +960,15 @@ def handle_get_order_info(prompt, user_data, phone_id):
         user = User.from_dict(user_data['user'])
         current_field = user_data.get('field')
 
-        if current_field == 'theme':
-            user.theme = prompt
+        # First time entering - ask for theme
+        if current_field is None:
+            send_message("Which theme would you like for your cake?", user_data['sender'], phone_id)
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'theme',
                 'selected_item': user_data.get('selected_item')
             })
-            
-            # Ask for theme first
-            send_message("Which theme would you like for your cake?", user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'theme'}
 
         elif current_field == 'theme':
