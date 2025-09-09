@@ -963,7 +963,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'flavor',
+                'field': 'theme',
                 'selected_item': user_data.get('selected_item')
             })
             
@@ -988,7 +988,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'due_time',
+                'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("What time do you need the cake? e.g 12pm", user_data['sender'], phone_id)
@@ -1003,7 +1003,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'message',
+                'field': 'due_time',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("What message would you like on the cake? (e.g., Happy Birthday!):", user_data['sender'], phone_id)
@@ -1939,7 +1939,7 @@ def handle_message(prompt, user_data, phone_id):
 
 *Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
 *Name:* {user.name}
-*Contact:* {user.email or user.phone}
+*Contact:* {self.contact_number}
 *Flavor:* {user.flavor}
 *Theme:* {user.theme}
 *Due Date:* {user.due_date}
