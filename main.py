@@ -1744,47 +1744,49 @@ For more details or to make changes, please contact us directly.
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
 
+
+def handle_agent_location(prompt, user_data, phone_id):
+    try:
+        choice = prompt.lower().strip()
+        if "harare" in choice:
+            agent = random.choice(HARARE)
+        elif "bulawayo" in choice:
+            agent = random.choice(BULAWAYO)
+        else:
+            send_message("Please choose either *Harare* or *Bulawayo*.", user_data['sender'], phone_id)
+            return {'step': 'agent_location'}
+
+        # Start agent session
+        start_agent_session(user_data['sender'], agent)
+        return {'step': 'agent_chat', 'agent': agent}
+
+    except Exception as e:
+        logging.error(f"Error in handle_agent_location: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+
+
 def human_agent(prompt, user_data, phone_id):
     try:
-        send_message(
-            "You've requested to speak with a human agent. "
-            "One of our team members will contact you shortly. "
-            "Please provide a brief description of what you need help with:",
+        send_button_message(
+            "Would you like to speak to a *Harare* or *Bulawayo* representative?",
+            [
+                {"id": "harare_agent", "title": "Harare"},
+                {"id": "bulawayo_agent", "title": "Bulawayo"}
+            ],
             user_data['sender'],
             phone_id
         )
-        
-        # Save agent request
-        agent_request = {
-            'timestamp': datetime.now().isoformat(),
-            'phone': user_data['sender'],
-            'initial_message': prompt
-        }
-        
-        request_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-        redis_client.setex(f"agent_request:{request_id}", 3600, json.dumps(agent_request))  # 1 hour expiration
-        
-        # Notify agent/owner
-        if owner_phone:
-            agent_msg = f"""
-👨‍💼 *HUMAN AGENT REQUEST* 👩‍💼
 
-*Request ID:* {request_id}
-*Customer:* {user_data['sender']}
-*Initial Message:* {prompt[:200]}{'...' if len(prompt) > 200 else ''}
+        update_user_state(user_data['sender'], {'step': 'agent_location'})
+        return {'step': 'agent_location'}
 
-Please contact the customer as soon as possible.
-            """
-            send_message(agent_msg, owner_phone, phone_id)
-        
-        update_user_state(user_data['sender'], {'step': 'waiting_for_agent'})
-        return {'step': 'waiting_for_agent'}
-            
     except Exception as e:
         logging.error(f"Error in human_agent: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
-        
+
 
 def handle_waiting_for_agent(prompt, user_data, phone_id):
     try:
@@ -1906,6 +1908,9 @@ def handle_message(prompt, user_data, phone_id):
             
         elif current_step == 'fruit_cake_menu':
             return handle_fruit_cake_menu(prompt, user_data, phone_id)
+
+        elif current_step == 'agent_location':
+            return handle_agent_location(prompt, user_data, phone_id)
             
         elif current_step == 'plastic_icing_menu':
             return handle_plastic_icing_menu(prompt, user_data, phone_id)
