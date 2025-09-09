@@ -1748,15 +1748,17 @@ For more details or to make changes, please contact us directly.
 def handle_agent_location(prompt, user_data, phone_id):
     try:
         choice = prompt.lower().strip()
-        if "harare" in choice:
+
+        # Accept both button IDs and plain text
+        if choice in ["harare_agent", "harare"]:
             agent = random.choice(HARARE)
-        elif "bulawayo" in choice:
+        elif choice in ["bulawayo_agent", "bulawayo"]:
             agent = random.choice(BULAWAYO)
         else:
-            send_message("Please choose either *Harare* or *Bulawayo*.", user_data['sender'], phone_id)
+            send_message("⚠️ Please choose either *Harare* or *Bulawayo*.", user_data['sender'], phone_id)
             return {'step': 'agent_location'}
 
-        # Start agent session
+        # Start session
         start_agent_session(user_data['sender'], agent)
         return {'step': 'agent_chat', 'agent': agent}
 
