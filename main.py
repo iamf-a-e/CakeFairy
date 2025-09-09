@@ -2052,18 +2052,15 @@ def webhook():
                                 sender = normalize_phone_number(sender)
                                 incoming_text = None
                                 # Interactive replies
-                                if message.get('type') == 'interactive':
-                                    interactive = message.get('interactive', {})
-                                    if interactive.get('type') == 'list_reply':
-                                        selected = interactive.get('list_reply', {})
-                                        incoming_text = selected.get('title') or selected.get('id')
-                                    elif interactive.get('type') == 'button_reply':
-                                        selected = interactive.get('button_reply', {})
-                                        incoming_text = selected.get('id') or selected.get('title')
-                                    else:
-                                        incoming_text = ''
-                                elif message.get('type') == 'text':
-                                    incoming_text = message.get('text', {}).get('body', '')
+                                prompt = ""
+                                if "interactive" in message:
+                                    interactive_type = message["interactive"]["type"]
+                                    if interactive_type == "button_reply":
+                                        prompt = message["interactive"]["button_reply"]["id"]
+                                    elif interactive_type == "list_reply":
+                                        prompt = message["interactive"]["list_reply"]["title"]
+                                elif "text" in message:
+                                    prompt = message["text"]["body"]
 
                                 elif message.get('type') == 'image':
                                     # Handle image messages for design requests
