@@ -993,7 +993,22 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'flavor',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What time do you need the cake? e.g 12pm", user_data['sender'], phone_id)
+            send_message("When do you need the cake? e.g 12/09/2025", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'due_date'
+            }
+
+        elif current_field == 'due_date':
+            user.due_date = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'due_time',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What time do you need the cake? (e.g 2pm):", user_data['sender'], phone_id)
             return {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
