@@ -2083,7 +2083,7 @@ def webhook():
                                     elif interactive.get('type') == 'button_reply':
                                         selected = interactive.get('button_reply', {})
                                         incoming_text = selected.get('id') or selected.get('title')
-                                    else:
+                                    else: 
                                         incoming_text = ''
                                 elif message.get('type') == 'text':
                                     incoming_text = message.get('text', {}).get('body', '')
