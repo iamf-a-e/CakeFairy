@@ -926,7 +926,7 @@ def handle_order_decision(prompt, user_data, phone_id):
     try:
         if "yes" in prompt.lower() or "order" in prompt.lower():
             send_message(
-                "Great! Let's start your order. Which theme do you want for the cake? e.g Barbie",
+                "Great! Let's start your order. When do you need the cake? e.g 13/09/2025",
                 user_data['sender'],
                 phone_id
             )
@@ -955,60 +955,138 @@ def handle_order_decision(prompt, user_data, phone_id):
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
 
-# In the handle_message function, find the choose_payment section and replace:
-elif current_step == 'choose_payment':
-    # Parse payment option
-    selected_option = None
-    for option in PaymentOptions:
-        if prompt_lower in option.value.lower():
-            selected_option = option
-            break
-    user = User.from_dict(user_data['user'])
-    if selected_option:
-        user.payment_method = selected_option.value
-    else:
-        user.payment_method = prompt
+def handle_get_order_info(prompt, user_data, phone_id):
+    try:
+        user = User.from_dict(user_data['user'])
+        current_field = user_data.get('field')
 
-    # Show final summary including payment - FIXED THE contact_number REFERENCE
-    order_summary = f"""
-🎂 *ORDER SUMMARY* 🎂
+        if current_field == 'theme':
+            user.theme = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'theme',
+                'selected_item': user_data.get('selected_item')
+            })
+            
 
-*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
-*Name:* {user.name}
-*Contact:* {user.contact_number}  # CHANGED FROM self.contact_number TO user.contact_number
-*Flavor:* {user.flavor}
-*Theme:* {user.theme}
-*Due Date:* {user.due_date}
-*Due Time:* {user.due_time}
-*Colors:* {user.colors}
-*Message:* {user.message}
-*Referral Source:* {user.referral_source}
-*Special Requests:* {user.special_requests}
-*Payment:* {user.payment_method}
+            selected_item = (user_data.get('selected_item') or "").lower()
+            if "cake fairy" in selected_item:
+                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
+            elif "double delite" in selected_item:
+                flavor_msg = "Please choose two flavors: chocolate, vanilla, orange, strawberry, or lemon."
+            elif "triple delite" in selected_item:
+                flavor_msg = "Please choose three flavors: chocolate, vanilla, orange, strawberry, or lemon."
+            else:
+                # Default to single flavor prompt if not specified
+                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon."
+        
+            send_message(flavor_msg, user_data['sender'], phone_id)
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'flavor'}
 
-*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
 
-Please confirm if this order is correct.
-    """
+        elif current_field == 'flavor':
+            user.flavor = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'flavor',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What time do you need the cake? e.g 12pm", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'due_time'
+            }
 
-    send_button_message(
-        order_summary,
-        [
-            {"id": "confirm_yes", "title": "✅ Yes, confirm order"},
-            {"id": "confirm_no", "title": "❌ No, edit order"}
-        ],
-        user_data['sender'],
-        phone_id
-    )
-    update_user_state(user_data['sender'], {
-        'step': 'confirm_order',
-        'user': user.to_dict(),
-        'selected_item': user_data.get('selected_item')
-    })
-    return {
-        'step': 'confirm_order',
-        'user': user.to_dict()
-    }
+        elif current_field == 'due_time':
+            user.due_time = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'due_time',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What message would you like on the cake? (e.g., Happy Birthday!):", user_data['sender'], phone_id)
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'message'}
+
+        elif current_field == 'message':
+            user.message = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'contact_name',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("Who is the contact person for this order?", user_data['sender'], phone_id)
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'contact_name'}
+
+        elif current_field == 'contact_name':
+            user.name = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'contact_number',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("Please provide the contact phone number:", user_data['sender'], phone_id)
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'contact_number'}
+
+        elif current_field == 'contact_number':
+            user.phone = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'email',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("Please provide the contact email:", user_data['sender'], phone_id)
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'email'}
+
+        elif current_field == 'email':
+            user.email = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'special_requests',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("Any special requests or dietary requirements?", user_data['sender'], phone_id)
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'special_requests'}
+
+        elif current_field == 'special_requests':
+            user.special_requests = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'colors',
+                'selected_item': user_data.get('selected_item')
+            })
+            send_message("What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attract an extra charge of $5", user_data['sender'], phone_id)
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'colors'}
+
+        elif current_field == 'colors':
+            user.colors = prompt
+            # After last step, move to payment
+            payment_options = [option.value for option in PaymentOptions]
+            send_list_message(
+                "Please choose a payment method:",
+                payment_options,
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {
+                'step': 'choose_payment',
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item')
+            })
+            return {'step': 'choose_payment', 'user': user.to_dict()}
+
+    except Exception as e:
+        logging.error(f"Error in handle_get_order_info: {e}")
+        send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
 
 
 def handle_confirm_order(prompt, user_data, phone_id):
