@@ -926,7 +926,7 @@ def handle_order_decision(prompt, user_data, phone_id):
     try:
         if "yes" in prompt.lower() or "order" in prompt.lower():
             send_message(
-                "Great! Let's start your order. When do you need the cake? e.g 13/09/2025",
+                "Great! Let's start your order. Which theme would you want for the cake? e.g Barbie",
                 user_data['sender'],
                 phone_id
             )
