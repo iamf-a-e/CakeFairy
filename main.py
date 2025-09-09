@@ -1959,34 +1959,33 @@ def handle_message(prompt, user_data, phone_id):
                 if prompt_lower in option.value.lower():
                     selected_option = option
                     break
+            
             user = User.from_dict(user_data['user'])
             if selected_option:
                 user.payment_method = selected_option.value
             else:
                 user.payment_method = prompt
-
+        
             # Show final summary including payment
             order_summary = f"""
-🎂 *ORDER SUMMARY* 🎂
-
-*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
-*Name:* {user.name}
-*Contact:* {self.contact_number}
-*Flavor:* {user.flavor}
-*Theme:* {user.theme}
-*Due Date:* {user.due_date}
-*Due Time:* {user.due_time}
-*Colors:* {user.colors}
-*Message:* {user.message}
-*Referral Source:* {user.referral_source}
-*Special Requests:* {user.special_requests}
-*Payment:* {user.payment_method}
-
-*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
-
-Please confirm if this order is correct.
-            """
-
+        🎂 *ORDER SUMMARY* 🎂
+        
+        *Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
+        *Name:* {user.name}
+        *Contact:* {user.contact_number}
+        *Flavor:* {user.flavor}
+        *Theme:* {user.theme}
+        *Due Time:* {user.due_time}
+        *Colors:* {user.colors}
+        *Message:* {user.message}
+        *Special Requests:* {user.special_requests}
+        *Payment:* {user.payment_method}
+        
+        *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+        
+        Please confirm if this order is correct.
+        """
+        
             send_button_message(
                 order_summary,
                 [
@@ -2003,7 +2002,8 @@ Please confirm if this order is correct.
             })
             return {
                 'step': 'confirm_order',
-                'user': user.to_dict()
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item')
             }
             
         elif current_step == 'confirm_order':
