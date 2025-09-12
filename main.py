@@ -967,13 +967,14 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'theme',
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')  # ensure cake_type is passed along
             })
 
-            selected_item = (user_data.get('selected_item') or "").lower()
+            cake_type = (user_data.get('cake_type') or "").lower()
 
-            # Skip flavor/icing for fruit cakes
-            if "fruit cake" in selected_item or "fruit" in selected_item:
+            # ✅ Skip flavor/icing for fruit cakes
+            if "fruit" in cake_type:
                 send_message("When do you need the cake? e.g 12/09/2025", user_data['sender'], phone_id)
                 return {
                     'step': 'get_order_info',
@@ -981,7 +982,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
                     'field': 'due_date'
                 }
 
-            # Flavor logic for other cakes
+            # Flavor logic for non-fruit cakes
+            selected_item = (user_data.get('selected_item') or "").lower()
             if "cake fairy" in selected_item:
                 flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
             elif "double delite" in selected_item:
@@ -1000,7 +1002,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'flavor',
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')
             })
             send_message("When do you need the cake? e.g 12/09/2025", user_data['sender'], phone_id)
             return {
@@ -1015,7 +1018,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'due_time',
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')
             })
             send_message("What time do you need the cake? (e.g 2pm):", user_data['sender'], phone_id)
             return {
@@ -1030,7 +1034,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'due_time',
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')
             })
             send_message("What message would you like on the cake? (e.g., Happy Birthday!):", user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'message'}
@@ -1041,7 +1046,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'contact_name',
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')
             })
             send_message("Who is the contact person for this order?", user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'contact_name'}
@@ -1052,7 +1058,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'contact_number',
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')
             })
             send_message("Please provide the contact phone number:", user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'contact_number'}
@@ -1063,7 +1070,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'email',
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')
             })
             send_message("Please provide the contact email:", user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'email'}
@@ -1074,7 +1082,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'special_requests',
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')
             })
             send_message("Any special requests or dietary requirements?", user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'special_requests'}
@@ -1085,10 +1094,12 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'colors',
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')
             })
-            selected_item = (user_data.get('selected_item') or "").lower()
-            if "fruit cake" in selected_item or "fruit" in selected_item:
+            cake_type = (user_data.get('cake_type') or "").lower()
+            # ✅ Remove $5 charge notice for fruit cakes
+            if "fruit" in cake_type:
                 send_message("What colors would you like on the cake? (e.g., blue and white)", user_data['sender'], phone_id)
             else:
                 send_message("What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attract an extra charge of $5", user_data['sender'], phone_id)
@@ -1107,7 +1118,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
             update_user_state(user_data['sender'], {
                 'step': 'choose_payment',
                 'user': user.to_dict(),
-                'selected_item': user_data.get('selected_item')
+                'selected_item': user_data.get('selected_item'),
+                'cake_type': user_data.get('cake_type')
             })
             return {'step': 'choose_payment', 'user': user.to_dict()}
 
