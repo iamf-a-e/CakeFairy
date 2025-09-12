@@ -710,7 +710,8 @@ def handle_fresh_cream_menu(prompt, user_data, phone_id):
         )
         update_user_state(user_data['sender'], {
             'step': 'order_decision',
-            'selected_option': selected_option.value
+            'selected_option': selected_option.value,
+            'cake_type': CakeTypeOptions.FRESH_CREAM.value
         })
         return {'step': 'order_decision'}
             
@@ -817,7 +818,8 @@ def handle_two_tier_menu(prompt, user_data, phone_id):
         )
         update_user_state(user_data['sender'], {
             'step': 'order_decision',
-            'selected_option': selected_option.value
+            'selected_option': selected_option.value,
+            'cake_type': CakeTypeOptions.FRESH_CREAM.value
         })
         return {'step': 'order_decision'}
             
@@ -849,7 +851,8 @@ def handle_three_tier_menu(prompt, user_data, phone_id):
         )
         update_user_state(user_data['sender'], {
             'step': 'order_decision',
-            'selected_option': selected_option.value
+            'selected_option': selected_option.value,
+            'cake_type': CakeTypeOptions.FRESH_CREAM.value
         })
         return {'step': 'order_decision'}
             
@@ -881,7 +884,8 @@ def handle_fruit_cake_menu(prompt, user_data, phone_id):
         )
         update_user_state(user_data['sender'], {
             'step': 'order_decision',
-            'selected_option': selected_option.value
+            'selected_option': selected_option.value,
+            'cake_type': CakeTypeOptions.FRUIT.value
         })
         return {'step': 'order_decision'}
             
@@ -913,7 +917,8 @@ def handle_plastic_icing_menu(prompt, user_data, phone_id):
         )
         update_user_state(user_data['sender'], {
             'step': 'order_decision',
-            'selected_option': selected_option.value
+            'selected_option': selected_option.value,
+            'cake_type': CakeTypeOptions.PLASTIC_ICING.value
         })
         return {'step': 'order_decision'}
             
@@ -970,15 +975,16 @@ def handle_get_order_info(prompt, user_data, phone_id):
             })
             
 
-            selected_item = (user_data.get('selected_item') or "").lower()
+            cake_type = (user_data.get('cake_type') or "").lower()
             # If a Fruit Cake was selected, skip flavor selection entirely
-            if "fruit" in selected_item:
+            if "fruit" in cake_type:
                 send_message("When do you need the cake? e.g 12/09/2025", user_data['sender'], phone_id)
                 return {
                     'step': 'get_order_info',
                     'user': user.to_dict(),
                     'field': 'due_date'
                 }
+            selected_item = (user_data.get('selected_item') or "").lower()
             if "cake fairy" in selected_item:
                 flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
             elif "double delite" in selected_item:
@@ -1086,8 +1092,8 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'colors',
                 'selected_item': user_data.get('selected_item')
             })
-            selected_item = (user_data.get('selected_item') or "").lower()
-            if "fruit" in selected_item:
+            cake_type = (user_data.get('cake_type') or "").lower()
+            if "fruit" in cake_type:
                 color_msg = "What colors would you like on the cake? (e.g., blue and white)"
             else:
                 color_msg = "What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attract an extra charge of $5"
