@@ -1223,9 +1223,14 @@ Please visit www.cakefairy1.com for terms and conditions.
                     'sender': user_data['sender'],
                     'order_number': order_number,
                     'customer_name': user.contact_name or user.name,
-                    'payment_method': user.payment_method
+                    'payment_method': user.payment_method,
+                    'selected_item': user_data.get('selected_item')
                 }, phone_id)
             else:
+                # If Cake Fairy Cake, skip design submission entirely
+                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
+                if "cake fairy" in selected_item_text.lower():
+                    return handle_restart_confirmation("", user_data, phone_id)
                 return handle_design_request("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
@@ -1323,7 +1328,14 @@ def handle_proof_of_payment(prompt, user_data, phone_id):
                 user_data['sender'],
                 phone_id
             )
-            return {'step': 'proof_of_payment'}
+            # Preserve context so we can decide to skip design
+            return {
+                'step': 'proof_of_payment',
+                'order_number': user_data.get('order_number'),
+                'customer_name': user_data.get('customer_name'),
+                'payment_method': user_data.get('payment_method'),
+                'selected_item': user_data.get('selected_item')
+            }
         
         # If we have an image, process it
         if prompt and prompt.startswith('IMAGE:'):
@@ -1355,8 +1367,13 @@ Here's the proof of payment they sent:
                 user_data['sender'],
                 phone_id
             )
-            
-            # Now go to design request
+
+            # If Cake Fairy Cake was selected, skip design submission entirely
+            selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
+            if "cake fairy" in selected_item_text.lower():
+                return handle_restart_confirmation("", user_data, phone_id)
+
+            # Otherwise proceed to request a design image
             return handle_design_request("", user_data, phone_id)
         
         # Initial entry - ask for proof of payment
@@ -1366,7 +1383,14 @@ Here's the proof of payment they sent:
             user_data['sender'],
             phone_id
         )
-        return {'step': 'proof_of_payment'}
+        # Preserve context so we can decide to skip design later
+        return {
+            'step': 'proof_of_payment',
+            'order_number': user_data.get('order_number'),
+            'customer_name': user_data.get('customer_name'),
+            'payment_method': user_data.get('payment_method'),
+            'selected_item': user_data.get('selected_item')
+        }
             
     except Exception as e:
         logging.error(f"Error in handle_proof_of_payment: {e}")
@@ -2033,11 +2057,21 @@ def handle_message(prompt, user_data, phone_id):
             else:
                 user.payment_method = prompt
         
+            # Compute price for Cake Fairy Cake with color surcharge
+            selected_item_text = (user_data.get('selected_item') or '').lower()
+            colors_text = (user.colors or '').lower()
+            price_line = ''
+            if 'cake fairy' in selected_item_text:
+                base_price = 20
+                surcharge = 5 if any(c in colors_text for c in ['black', 'gold']) else 0
+                total_price = base_price + surcharge
+                price_line = f"\n*Price:* ${total_price}"
+
             # Show final summary including payment
             order_summary = f"""
         🎂 *ORDER SUMMARY* 🎂
         
-*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
+*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}{price_line}
 *Name:* {user.name}
 *Flavor:* {user.flavor}
 *Theme:* {user.theme}
