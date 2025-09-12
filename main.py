@@ -514,8 +514,7 @@ def parse_flavors_from_text(text):
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
         "🎂 *Welcome to Cake Fairy!* 🎂\n\n"
-        "We create delicious, beautifully decorated cakes for all occasions.\n"
-        "Fresh cream is the default filling for all our $20 cakes.\n\n"
+        "We create delicious, beautifully decorated cakes for all occasions.\n\n"        
         "Please choose an option to continue:"
     )
     
