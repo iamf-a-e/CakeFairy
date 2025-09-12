@@ -956,6 +956,38 @@ def handle_order_decision(prompt, user_data, phone_id):
         return {'step': 'main_menu'}
 
 
+def handle_selected_item(selected_item, user_data, phone_id, cake_type=None):
+    try:
+        user = User.from_dict(user_data['user'])
+        user.selected_item = selected_item
+
+        # Save both selected_item (size/price) and cake_type (category)
+        update_user_state(user_data['sender'], {
+            'step': 'get_order_info',
+            'user': user.to_dict(),
+            'field': 'theme',
+            'selected_item': selected_item,
+            'cake_type': cake_type   # 🔑 now we store cake_type
+        })
+
+        send_message("What theme would you like for the cake? (e.g., Cartoon, Wedding, Elegant)", 
+                     user_data['sender'], phone_id)
+
+        return {
+            'step': 'get_order_info',
+            'user': user.to_dict(),
+            'field': 'theme',
+            'selected_item': selected_item,
+            'cake_type': cake_type
+        }
+
+    except Exception as e:
+        logging.error(f"Error in handle_selected_item: {e}")
+        send_message("An error occurred while processing your selection. Please try again.", 
+                     user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+
+
 def handle_get_order_info(prompt, user_data, phone_id):
     try:
         user = User.from_dict(user_data['user'])
