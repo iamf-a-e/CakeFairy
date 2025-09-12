@@ -881,14 +881,20 @@ def handle_fruit_cake_menu(prompt, user_data, phone_id):
         )
         update_user_state(user_data['sender'], {
             'step': 'order_decision',
-            'selected_option': selected_option.value
+            'selected_option': selected_option.value,
+            'is_fruit_cake': True  # Set the flag here for fruit cakes
         })
-        return {'step': 'order_decision'}
+        return {
+            'step': 'order_decision',
+            'selected_option': selected_option.value,
+            'is_fruit_cake': True
+        }
             
     except Exception as e:
         logging.error(f"Error in handle_fruit_cake_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'fruit_cake_menu'}
+
 
 def handle_plastic_icing_menu(prompt, user_data, phone_id):
     try:
