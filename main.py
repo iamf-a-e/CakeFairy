@@ -1223,9 +1223,14 @@ Please visit www.cakefairy1.com for terms and conditions.
                     'sender': user_data['sender'],
                     'order_number': order_number,
                     'customer_name': user.contact_name or user.name,
-                    'payment_method': user.payment_method
+                    'payment_method': user.payment_method,
+                    'selected_item': user_data.get('selected_item')
                 }, phone_id)
             else:
+                # If Cake Fairy Cake, skip design submission entirely
+                selected_item_text = (user_data.get('selected_item') or "")
+                if "cake fairy cake" in selected_item_text.lower():
+                    return handle_restart_confirmation("", user_data, phone_id)
                 return handle_design_request("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
@@ -1355,8 +1360,13 @@ Here's the proof of payment they sent:
                 user_data['sender'],
                 phone_id
             )
-            
-            # Now go to design request
+
+            # If Cake Fairy Cake was selected, skip design submission entirely
+            selected_item_text = (user_data.get('selected_item') or "")
+            if "cake fairy cake" in selected_item_text.lower():
+                return handle_restart_confirmation("", user_data, phone_id)
+
+            # Otherwise proceed to request a design image
             return handle_design_request("", user_data, phone_id)
         
         # Initial entry - ask for proof of payment
