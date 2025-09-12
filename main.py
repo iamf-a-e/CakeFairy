@@ -971,6 +971,14 @@ def handle_get_order_info(prompt, user_data, phone_id):
             
 
             selected_item = (user_data.get('selected_item') or "").lower()
+            # If a Fruit Cake was selected, skip flavor selection entirely
+            if "fruit" in selected_item:
+                send_message("When do you need the cake? e.g 12/09/2025", user_data['sender'], phone_id)
+                return {
+                    'step': 'get_order_info',
+                    'user': user.to_dict(),
+                    'field': 'due_date'
+                }
             if "cake fairy" in selected_item:
                 flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
             elif "double delite" in selected_item:
@@ -1078,7 +1086,12 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'colors',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attract an extra charge of $5", user_data['sender'], phone_id)
+            selected_item = (user_data.get('selected_item') or "").lower()
+            if "fruit" in selected_item:
+                color_msg = "What colors would you like on the cake? (e.g., blue and white)"
+            else:
+                color_msg = "What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attract an extra charge of $5"
+            send_message(color_msg, user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'colors'}
 
         elif current_field == 'colors':
