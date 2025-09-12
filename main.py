@@ -479,6 +479,37 @@ def send_list_message(text, options, recipient, phone_id):
         logging.error(f"Unexpected error sending list message: {str(e)}")
         return False
 
+
+# Flavor helpers
+ALLOWED_FLAVORS = ["chocolate", "vanilla", "orange", "strawberry", "lemon"]
+
+def required_flavor_count(selected_item_text):
+    t = (selected_item_text or "").lower()
+    if "triple delite" in t or "triple delight" in t:
+        return 3
+    if "double delite" in t or "double delight" in t:
+        return 2
+    return 1
+
+def parse_flavors_from_text(text):
+    if not text:
+        return []
+    s = text.lower()
+    # Normalize common separators to commas
+    for sep in [" and ", " & ", "/", "\\", "|", ";"]:
+        s = s.replace(sep, ",")
+    parts = [p.strip() for p in s.split(",") if p.strip()]
+    flavors = []
+    for part in parts:
+        for flavor in ALLOWED_FLAVORS:
+            if flavor in part and flavor not in flavors:
+                flavors.append(flavor)
+                break
+    # If no match but exact single allowed sent without separators
+    if not flavors and s.strip() in ALLOWED_FLAVORS:
+        flavors.append(s.strip())
+    return flavors
+
 # Handlers
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
@@ -1020,7 +1051,38 @@ def handle_get_order_info(prompt, user_data, phone_id):
 
 
         elif current_field == 'flavor':
-            user.flavor = prompt
+            selected_item_text = (user_data.get('selected_item') or "")
+            required = required_flavor_count(selected_item_text)
+            chosen_flavors = parse_flavors_from_text(prompt)
+
+            if len(chosen_flavors) < required:
+                count_text = "flavor" if len(chosen_flavors) == 1 else "flavors"
+                requirement_text = f"{required}"
+                # Identify item label
+                item_label = "Triple Delite" if required == 3 else ("Double Delite" if required == 2 else "Cake Fairy Cake")
+                # Build helpful re-prompt
+                helper_example = (
+                    "e.g., chocolate and vanilla" if required == 2 else
+                    ("e.g., chocolate, vanilla and strawberry" if required == 3 else "e.g., chocolate")
+                )
+                allowed_text = ", ".join(ALLOWED_FLAVORS)
+                msg = (
+                    f"You selected {len(chosen_flavors)} {count_text} when you should select {requirement_text} "
+                    f"since you chose {item_label}.\n\n"
+                    f"Please send {requirement_text} flavors from: {allowed_text}. {helper_example}"
+                )
+                send_message(msg, user_data['sender'], phone_id)
+                # Stay on flavor step without advancing
+                update_user_state(user_data['sender'], {
+                    'step': 'get_order_info',
+                    'user': user.to_dict(),
+                    'field': 'flavor',
+                    'selected_item': user_data.get('selected_item')
+                })
+                return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'flavor'}
+
+            # Store flavors as a nice comma-separated string
+            user.flavor = ", ".join(chosen_flavors) if required > 1 else chosen_flavors[0]
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
