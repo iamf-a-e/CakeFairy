@@ -930,12 +930,32 @@ def handle_plastic_icing_menu(prompt, user_data, phone_id):
 def handle_order_decision(prompt, user_data, phone_id):
     try:
         if "yes" in prompt.lower() or "order" in prompt.lower():
+            user = User(name="", phone=user_data['sender'])
+            selected_item_text = (user_data.get('selected_option') or "")
+            cake_type_text = (user_data.get('cake_type') or "")
+
+            # If Cake Fairy Cake (Fresh Cream), skip theme and go straight to flavor
+            if "cake fairy cake" in selected_item_text.lower() and CakeTypeOptions.FRESH_CREAM.value.lower() in cake_type_text.lower():
+                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
+                send_message(flavor_msg, user_data['sender'], phone_id)
+                update_user_state(user_data['sender'], {
+                    'step': 'get_order_info',
+                    'user': user.to_dict(),
+                    'field': 'flavor',
+                    'selected_item': selected_item_text
+                })
+                return {
+                    'step': 'get_order_info',
+                    'user': user.to_dict(),
+                    'field': 'flavor'
+                }
+
+            # Default flow asks for theme
             send_message(
                 "Great! Let's start your order. Which theme would you want for the cake? e.g Barbie",
                 user_data['sender'],
                 phone_id
             )
-            user = User(name="", phone=user_data['sender'])
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1081,8 +1101,22 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'special_requests',
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("Any special requests or dietary requirements?", user_data['sender'], phone_id)
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'special_requests'}
+            selected_item = (user_data.get('selected_item') or "").lower()
+            cake_type = (user_data.get('cake_type') or "").lower()
+            # If this is Cake Fairy Cake under Fresh Cream, skip special requests/design and go to colors
+            if "cake fairy cake" in selected_item and "fresh cream" in cake_type:
+                update_user_state(user_data['sender'], {
+                    'step': 'get_order_info',
+                    'user': user.to_dict(),
+                    'field': 'colors',
+                    'selected_item': user_data.get('selected_item')
+                })
+                color_msg = "What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attract an extra charge of $5"
+                send_message(color_msg, user_data['sender'], phone_id)
+                return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'colors'}
+            else:
+                send_message("Any special requests or dietary requirements?", user_data['sender'], phone_id)
+                return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'special_requests'}
 
         elif current_field == 'special_requests':
             user.special_requests = prompt
