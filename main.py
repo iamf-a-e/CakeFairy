@@ -17,9 +17,9 @@ wa_token = os.environ.get("WA_TOKEN")
 phone_id = os.environ.get("PHONE_ID")
 redis_url = os.environ.get("REDIS_URL")
 owner_phone = os.environ.get("OWNER_PHONE")
-AGENT_NUMBERS = ["+263772210415"]
-HARARE = ["+263772210415"]
-BULAWAYO = ["+263772210415"]
+AGENT_NUMBERS = ["+263785019494"]
+HARARE = ["+263785019494"]
+BULAWAYO = ["+263785019494"]
 
 # Redis client setup
 redis_client = Redis(
@@ -955,39 +955,6 @@ def handle_order_decision(prompt, user_data, phone_id):
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
 
-
-def handle_selected_item(selected_item, user_data, phone_id, cake_type=None):
-    try:
-        user = User.from_dict(user_data['user'])
-        user.selected_item = selected_item
-
-        # Save both selected_item (size/price) and cake_type (category)
-        update_user_state(user_data['sender'], {
-            'step': 'get_order_info',
-            'user': user.to_dict(),
-            'field': 'theme',
-            'selected_item': selected_item,
-            'cake_type': cake_type   # 🔑 now we store cake_type
-        })
-
-        send_message("What theme would you like for the cake? (e.g., Cartoon, Wedding, Elegant)", 
-                     user_data['sender'], phone_id)
-
-        return {
-            'step': 'get_order_info',
-            'user': user.to_dict(),
-            'field': 'theme',
-            'selected_item': selected_item,
-            'cake_type': cake_type
-        }
-
-    except Exception as e:
-        logging.error(f"Error in handle_selected_item: {e}")
-        send_message("An error occurred while processing your selection. Please try again.", 
-                     user_data['sender'], phone_id)
-        return {'step': 'main_menu'}
-
-
 def handle_get_order_info(prompt, user_data, phone_id):
     try:
         user = User.from_dict(user_data['user'])
@@ -999,146 +966,54 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'get_order_info',
                 'user': user.to_dict(),
                 'field': 'theme',
-                'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')  # ensure cake_type is passed along
+                'selected_item': user_data.get('selected_item')
             })
-
-            cake_type = (user_data.get('cake_type') or "").lower()
-
-            # ✅ Skip flavor/icing for fruit cakes
-            if "fruit" in cake_type:
+            
+            selected_item = (user_data.get('selected_item') or "").lower()
+            
+            # Check if it's a fruit cake
+            is_fruit_cake = "fruit" in selected_item.lower()
+            
+            if is_fruit_cake:
+                # Skip flavor selection for fruit cakes
                 send_message("When do you need the cake? e.g 12/09/2025", user_data['sender'], phone_id)
                 return {
                     'step': 'get_order_info',
                     'user': user.to_dict(),
-                    'field': 'due_date'
+                    'field': 'due_date',
+                    'is_fruit_cake': True  # Add flag for fruit cake
                 }
-
-            # Flavor logic for non-fruit cakes
-            selected_item = (user_data.get('selected_item') or "").lower()
-            if "cake fairy" in selected_item:
-                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
-            elif "double delite" in selected_item:
-                flavor_msg = "Please choose two flavors: chocolate, vanilla, orange, strawberry, or lemon."
-            elif "triple delite" in selected_item:
-                flavor_msg = "Please choose three flavors: chocolate, vanilla, orange, strawberry, or lemon."
             else:
-                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon."
-
-            send_message(flavor_msg, user_data['sender'], phone_id)
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'flavor'}
-
-        elif current_field == 'flavor':
-            user.flavor = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'flavor',
-                'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')
-            })
-            send_message("When do you need the cake? e.g 12/09/2025", user_data['sender'], phone_id)
-            return {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'due_date'
-            }
-
-        elif current_field == 'due_date':
-            user.due_date = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'due_time',
-                'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')
-            })
-            send_message("What time do you need the cake? (e.g 2pm):", user_data['sender'], phone_id)
-            return {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'due_time'
-            }
-
-        elif current_field == 'due_time':
-            user.due_time = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'due_time',
-                'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')
-            })
-            send_message("What message would you like on the cake? (e.g., Happy Birthday!):", user_data['sender'], phone_id)
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'message'}
-
-        elif current_field == 'message':
-            user.message = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'contact_name',
-                'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')
-            })
-            send_message("Who is the contact person for this order?", user_data['sender'], phone_id)
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'contact_name'}
-
-        elif current_field == 'contact_name':
-            user.name = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'contact_number',
-                'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')
-            })
-            send_message("Please provide the contact phone number:", user_data['sender'], phone_id)
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'contact_number'}
-
-        elif current_field == 'contact_number':
-            user.phone = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'email',
-                'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')
-            })
-            send_message("Please provide the contact email:", user_data['sender'], phone_id)
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'email'}
-
-        elif current_field == 'email':
-            user.email = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'special_requests',
-                'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')
-            })
-            send_message("Any special requests or dietary requirements?", user_data['sender'], phone_id)
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'special_requests'}
-
-        elif current_field == 'special_requests':
-            user.special_requests = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'colors',
-                'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')
-            })
-            cake_type = (user_data.get('cake_type') or "").lower()
-            # ✅ Remove $5 charge notice for fruit cakes
-            if "fruit" in cake_type:
-                send_message("What colors would you like on the cake? (e.g., blue and white)", user_data['sender'], phone_id)
-            else:
-                send_message("What colors would you like on the cake? (e.g., blue and white)\n\nN.B Colors like black and gold attract an extra charge of $5", user_data['sender'], phone_id)
-            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'colors'}
-
+                # Regular cake flavor selection
+                if "cake fairy" in selected_item:
+                    flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
+                elif "double delite" in selected_item:
+                    flavor_msg = "Please choose two flavors: chocolate, vanilla, orange, strawberry, or lemon."
+                elif "triple delite" in selected_item:
+                    flavor_msg = "Please choose three flavors: chocolate, vanilla, orange, strawberry, or lemon."
+                else:
+                    flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon."
+            
+                send_message(flavor_msg, user_data['sender'], phone_id)
+                return {
+                    'step': 'get_order_info', 
+                    'user': user.to_dict(), 
+                    'field': 'flavor',
+                    'is_fruit_cake': False
+                }
+        
+        # In the colors field handling, modify the message for fruit cakes:
         elif current_field == 'colors':
             user.colors = prompt
+            
+            # Check if it's a fruit cake (no color surcharge)
+            is_fruit_cake = user_data.get('is_fruit_cake', False) or "fruit" in (user_data.get('selected_item') or "").lower()
+            
+            if is_fruit_cake:
+                color_note = ""
+            else:
+                color_note = "\n\nN.B Colors like black and gold attract an extra charge of $5"
+            
             # After last step, move to payment
             payment_options = [option.value for option in PaymentOptions]
             send_list_message(
@@ -1151,10 +1026,82 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'step': 'choose_payment',
                 'user': user.to_dict(),
                 'selected_item': user_data.get('selected_item'),
-                'cake_type': user_data.get('cake_type')
+                'is_fruit_cake': is_fruit_cake
             })
             return {'step': 'choose_payment', 'user': user.to_dict()}
-
+        
+        # In the choose_payment step, modify the order summary to handle fruit cakes:
+        elif current_step == 'choose_payment':
+            # Parse payment option
+            selected_option = None
+            for option in PaymentOptions:
+                if prompt_lower in option.value.lower():
+                    selected_option = option
+                    break
+            
+            user = User.from_dict(user_data['user'])
+            if selected_option:
+                user.payment_method = selected_option.value
+            else:
+                user.payment_method = prompt
+            
+            # Check if it's a fruit cake
+            is_fruit_cake = user_data.get('is_fruit_cake', False) or "fruit" in (user_data.get('selected_item') or "").lower()
+            
+            # Build order summary differently for fruit cakes
+            if is_fruit_cake:
+                order_summary = f"""
+        🎂 *FRUIT CAKE ORDER SUMMARY* 🎂
+        
+        *Selected Item:* {user_data.get('selected_item', 'Fruit Cake')}
+        *Name:* {user.name}
+        *Theme:* {user.theme}
+        *Due Date:* {user.due_date}
+        *Due Time:* {user.due_time}
+        *Message:* {user.message}
+        *Special Requests:* {user.special_requests}
+        *Payment:* {user.payment_method}
+        
+        *Note:* Fruit cakes have traditional fruit flavors and don't require flavor selection.
+        """
+            else:
+                order_summary = f"""
+        🎂 *ORDER SUMMARY* 🎂
+        
+        *Selected Item:* {user_data.get('selected_item', 'Custom Cake')}
+        *Name:* {user.name}
+        *Flavor:* {user.flavor}
+        *Theme:* {user.theme}
+        *Due Date:* {user.due_date}
+        *Due Time:* {user.due_time}
+        *Colors:* {user.colors}
+        *Message:* {user.message}
+        *Special Requests:* {user.special_requests}
+        *Payment:* {user.payment_method}
+        
+        *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+        """
+            
+            send_button_message(
+                order_summary,
+                [
+                    {"id": "confirm_yes", "title": "✅ Yes, confirm order"},
+                    {"id": "confirm_no", "title": "❌ No, edit order"}
+                ],
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {
+                'step': 'confirm_order',
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item'),
+                'is_fruit_cake': is_fruit_cake
+            })
+            return {
+                'step': 'confirm_order',
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item')
+            }
     except Exception as e:
         logging.error(f"Error in handle_get_order_info: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
