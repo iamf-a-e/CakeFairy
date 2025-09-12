@@ -1218,18 +1218,26 @@ Please visit www.cakefairy1.com for terms and conditions.
                 send_message(agent_notification, owner_phone, phone_id)
             
             # Payment check
+            selected_item_value = (user_data.get('selected_item') or "")
             if user.payment_method and "collection" not in user.payment_method.lower():
                 return handle_proof_of_payment("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
                     'customer_name': user.contact_name or user.name,
-                    'payment_method': user.payment_method
+                    'payment_method': user.payment_method,
+                    'selected_item': selected_item_value
                 }, phone_id)
             else:
+                # Skip design submission for Cake Fairy Cake
+                if "cake fairy cake" in selected_item_value.lower():
+                    return handle_restart_confirmation("", {
+                        'sender': user_data['sender']
+                    }, phone_id)
                 return handle_design_request("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
-                    'customer_name': user.contact_name or user.name
+                    'customer_name': user.contact_name or user.name,
+                    'selected_item': selected_item_value
                 }, phone_id)
             
         else:
@@ -1253,6 +1261,11 @@ Please visit www.cakefairy1.com for terms and conditions.
 
 def handle_design_request(prompt, user_data, phone_id):
     try:
+        # Skip design submission for Cake Fairy Cake
+        selected_item_text = (user_data.get('selected_item') or "").lower()
+        if "cake fairy cake" in selected_item_text:
+            return handle_restart_confirmation("", user_data, phone_id)
+
         # This function expects an image from the user
         # If we get text instead of an image, prompt again
         if prompt and not prompt.startswith('IMAGE:'):
@@ -1356,7 +1369,10 @@ Here's the proof of payment they sent:
                 phone_id
             )
             
-            # Now go to design request
+            # Now go to next step; skip design for Cake Fairy Cake
+            selected_item_text = (user_data.get('selected_item') or "").lower()
+            if "cake fairy cake" in selected_item_text:
+                return handle_restart_confirmation("", user_data, phone_id)
             return handle_design_request("", user_data, phone_id)
         
         # Initial entry - ask for proof of payment
