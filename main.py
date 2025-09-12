@@ -93,10 +93,10 @@ class FruitCakeOptions(Enum):
     BACK = "Back to cake types"
 
 class PlasticIcingOptions(Enum):
-    SMALL = "Small - $40"
-    MEDIUM = "Medium - $50"
-    LARGE = "Large - $70"
-    XL = "Extra Large - $100"
+    SMALL = "Small 6 inches- $40"
+    MEDIUM = "Medium 8 inches- $50"
+    LARGE = "Large 10 inches - $70"
+    XL = "Extra Large 12 inches- $100"
     BACK = "Back to cake types"
 
 class OrderOptions(Enum):
@@ -1458,10 +1458,10 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 • Cake Fairy Cake - $20
 • Double Delite - $25
 • Triple Delite - $30
-• Small - $30
-• Large - $40
-• Large - $60
-• Extra Large - $80
+• Small 6 inches - $30
+• Medium 8 inches- $40
+• Large 10 inches- $60
+• Extra Large 12 inches- $80
 • Extra Tall Cake - $65
 
 *2-Tier Cakes:*
@@ -1489,10 +1489,10 @@ def handle_pricing_menu(prompt, user_data, phone_id):
             pricing_msg = """
 💰 *Plastic Icing Cakes Pricing* 💰
 
-• Small - $40
-• Medium - $50
-• Large - $70
-• Extra Large - $100
+• Small 6 inches - $40
+• Medium 8 inches - $50
+• Large 10 inches - $70
+• Extra Large 12 inches - $100
             """
             
         send_message(pricing_msg, user_data['sender'], phone_id)
