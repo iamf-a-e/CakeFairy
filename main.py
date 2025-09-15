@@ -68,28 +68,28 @@ class TierCakesOptions(Enum):
     BACK = "Back to cake types"
 
 class TwoTierOptions(Enum):
-    SIZE_4_6 = "4 inch + 6 inch - $60"
-    SIZE_5_7 = "5 inch + 7 inch - $80"
-    SIZE_6_8 = "6 inch + 8 inch - $110"
-    SIZE_7_9 = "7 inch + 9 inch - $140"
-    SIZE_8_10 = "8 inch + 10 inch - $170"
+    SIZE_4_6 = "4 inches + 6 inches - $60"
+    SIZE_5_7 = "5 inches + 7 inches - $80"
+    SIZE_6_8 = "6 inches + 8 inches - $110"
+    SIZE_7_9 = "7 inches + 9 inches - $140"
+    SIZE_8_10 = "8 inches + 10 inches - $170"
     FONDANT = "Fondant Additional - $20"
     GANACHE = "Ganache Additional - $10"
     SMBC = "SMBC Additional - $15"
     BACK = "Back to tier options"
 
 class ThreeTierOptions(Enum):
-    SIZE_4_6_8 = "4 inch + 6 inch + 8 inch - $140"
-    SIZE_5_7_9 = "5 inch + 7 inch + 9 inch - $170"
-    SIZE_6_8_10 = "6 inch + 8 inch + 10 inch - $210"
+    SIZE_4_6_8 = "4 inches + 6 inches + 8 inches - $140"
+    SIZE_5_7_9 = "5 inches + 7 inches + 9 inches - $170"
+    SIZE_6_8_10 = "6 inches + 8 inches + 10 inches - $210"
     FONDANT = "Fondant Additional - $20"
     GANACHE = "Ganache Additional - $10"
     SMBC = "SMBC Additional - $15"
     BACK = "Back to tier options"
 
 class FruitCakeOptions(Enum):
-    SIZE_6 = "6 inch - $40"
-    SIZE_8 = "8 inch - $70"
+    SIZE_6 = "6 inches - $60"
+    SIZE_8 = "8 inches - $80"
     BACK = "Back to cake types"
 
 class PlasticIcingOptions(Enum):
@@ -1603,24 +1603,24 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 • Extra Tall Cake - $65
 
 *2-Tier Cakes:*
-• 4 inch + 6 inch - $60
-• 5 inch + 7 inch - $80
-• 6 inch + 8 inch - $110
-• 7 inch + 9 inch - $140
-• 8 inch + 10 inch - $170
+• 4 inches + 6 inches - $60
+• 5 inches + 7 inches - $80
+• 6 inches + 8 inches - $110
+• 7 inches + 9 inches - $140
+• 8 inches + 10 inches - $170
 
 *3-Tier Cakes:*
-• 4 inch + 6 inch + 8 inch - $140
-• 5 inch + 7 inch + 9 inch - $170
-• 6 inch + 8 inch + 10 inch - $210
+• 4 inches + 6 inches + 8 inches - $140
+• 5 inches + 7 inches + 9 inches - $170
+• 6 inches + 8 inches + 10 inches - $210
             """
             
         elif selected_option == CakeTypeOptions.FRUIT:
             pricing_msg = """
 💰 *Fruit Cakes Pricing* 💰
 
-• 6 inch - $40
-• 8 inch - $70
+• 6 inches - $40
+• 8 inches - $70
             """
             
         elif selected_option == CakeTypeOptions.PLASTIC_ICING:
@@ -1704,17 +1704,19 @@ def handle_contact_menu(prompt, user_data, phone_id):
 📞 *Contact Information* 📞
 
 You can reach us at:
-• Phone: [Your business phone number]
-• Email: [Your business email]
+• Email: sales@cakefairy1.com 
 • Website: www.cakefairy1.com
 
 Business Hours:
-• Monday-Friday: 8:00 AM - 6:00 PM
-• Saturday: 9:00 AM - 4:00 PM
-• Sunday: Closed
+• Monday-Friday: 8:00 AM - 5:00 PM
+• Saturday: 8:00 AM - 6:00 PM
+• Sunday: 8:00 AM - 3:00 PM
 
 We're located at:
-[Your business address]
+
+Bulawayo: 13 and 14th Avenue along R Mugabe Way Cake Fairy Shop | + ‪+263 77 321 8242‬ 
+
+Harare: 30 Rhodesville Avenue, Greendale | ‪+263 78 826 4258
             """
             send_message(contact_info, user_data['sender'], phone_id)
             return handle_restart_confirmation("", user_data, phone_id)
