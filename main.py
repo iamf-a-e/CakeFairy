@@ -1256,18 +1256,18 @@ Please visit www.cakefairy1.com for terms and conditions.
                     'selected_item': user_data.get('selected_item')
                 }, phone_id)
             
-            selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
-            if "cake fairy" in selected_item_text.lower():
-                return handle_restart_confirmation("", user_data, phone_id)
-
-            elif "double delite" in selected_item_text.lower():
-                return handle_restart_confirmation("", user_data, phone_id)
-
-            elif "triple delite" in selected_item_text.lower():
-                return handle_restart_confirmation("", user_data, phone_id)
+                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
+                if "cake fairy" in selected_item_text.lower():
+                    return handle_restart_confirmation("", user_data, phone_id)
+    
+                elif "double delite" in selected_item_text.lower():
+                    return handle_restart_confirmation("", user_data, phone_id)
+    
+                elif "triple delite" in selected_item_text.lower():
+                    return handle_restart_confirmation("", user_data, phone_id)
 
             # Otherwise proceed to request a design image
-            return handle_design_request("", user_data, phone_id)
+            #return handle_design_request("", user_data, phone_id)
             
             #elif (user_data.get('selected_item') or user_data.get('selected_option') or "").lower().find("cake fairy") != -1:
                 # If Cake Fairy Cake, skip design submission entirely
