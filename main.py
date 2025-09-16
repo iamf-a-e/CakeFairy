@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 import requests
 import random
@@ -1049,19 +1050,54 @@ def handle_get_order_info(prompt, user_data, phone_id):
 
 
         elif current_field == 'flavor':
-            user.flavor = prompt
+            selected_item_text = (user_data.get('selected_item') or "").lower()
+            # Normalize and parse flavors: accept comma, slash, newline, or "and" as separators
+            normalized = (prompt or "").replace(" and ", ",")
+            parsed_flavors = [part.strip() for part in re.split(r"[,/\n]+", normalized) if part.strip()]
+
+            required_count = 1
+            required_label = "one"
+            if "double delite" in selected_item_text:
+                required_count = 2
+                required_label = "two"
+            elif "triple delite" in selected_item_text:
+                required_count = 3
+                required_label = "three"
+
+            if required_count > 1:
+                if len(parsed_flavors) != required_count:
+                    if len(parsed_flavors) < required_count:
+                        send_message(
+                            f"You chose { 'Double Delite' if required_count == 2 else 'Triple Delite' }. Please enter {required_label} flavors separated by commas (e.g., chocolate, vanilla).",
+                            user_data['sender'],
+                            phone_id
+                        )
+                    else:
+                        send_message(
+                            f"Please enter exactly {required_label} flavors for your selection.",
+                            user_data['sender'],
+                            phone_id
+                        )
+                    # Stay on flavor step
+                    update_user_state(user_data['sender'], {
+                        'step': 'get_order_info',
+                        'user': user.to_dict(),
+                        'field': 'flavor',
+                        'selected_item': user_data.get('selected_item')
+                    })
+                    return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'flavor'}
+
+            # Accept the provided flavors
+            # Store as a clean, comma-separated list preserving user input order
+            user.flavor = ", ".join(parsed_flavors) if parsed_flavors else prompt
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'flavor',
+                'field': 'due_date',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("When do you need the cake? e.g 12/09/2025", user_data['sender'], phone_id)
-            return {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'due_date'
-            }
+            return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'due_date'}
 
         elif current_field == 'due_date':
             user.due_date = prompt
