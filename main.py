@@ -1255,41 +1255,27 @@ Please visit www.cakefairy1.com for terms and conditions.
                     'payment_method': user.payment_method,
                     'selected_item': user_data.get('selected_item')
                 }, phone_id)
-            elif:
+            
+            elif (user_data.get('selected_item') or user_data.get('selected_option') or "").lower().find("cake fairy") != -1:
                 # If Cake Fairy Cake, skip design submission entirely
-                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
-                if "cake fairy" in selected_item_text.lower():
-                    return handle_restart_confirmation("", user_data, phone_id)
-                    
-                return handle_design_request("", {
-                    'sender': user_data['sender'],
-                    'order_number': order_number,
-                    'customer_name': user.contact_name or user.name
-                }, phone_id
-
-            elif:
-                # If Cake Fairy Cake, skip design submission entirely
-                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
-                if "double delite" in selected_item_text.lower():
-                    return handle_restart_confirmation("", user_data, phone_id)
-                    
-                return handle_design_request("", {
-                    'sender': user_data['sender'],
-                    'order_number': order_number,
-                    'customer_name': user.contact_name or user.name
-                }, phone_id) 
-
+                return handle_restart_confirmation("", user_data, phone_id)
+            
+            elif (user_data.get('selected_item') or user_data.get('selected_option') or "").lower().find("double delite") != -1:
+                # If Double Delite Cake, skip design submission entirely
+                return handle_restart_confirmation("", user_data, phone_id)
+            
+            elif (user_data.get('selected_item') or user_data.get('selected_option') or "").lower().find("triple delite") != -1:
+                # If Triple Delite Cake, skip design submission entirely
+                return handle_restart_confirmation("", user_data, phone_id)
+            
             else:
-                # If Cake Fairy Cake, skip design submission entirely
-                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
-                if "triple delite" in selected_item_text.lower():
-                    return handle_restart_confirmation("", user_data, phone_id)
-                    
+                # Otherwise, request design submission
                 return handle_design_request("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
                     'customer_name': user.contact_name or user.name
                 }, phone_id)
+
             
         else:
             # Restart order process
