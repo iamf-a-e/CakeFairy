@@ -1255,16 +1255,34 @@ Please visit www.cakefairy1.com for terms and conditions.
                     'payment_method': user.payment_method,
                     'selected_item': user_data.get('selected_item')
                 }, phone_id)
-            else:
+            elif:
                 # If Cake Fairy Cake, skip design submission entirely
                 selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
                 if "cake fairy" in selected_item_text.lower():
                     return handle_restart_confirmation("", user_data, phone_id)
+                    
+                return handle_design_request("", {
+                    'sender': user_data['sender'],
+                    'order_number': order_number,
+                    'customer_name': user.contact_name or user.name
+                }, phone_id
 
-                elif "double delite" in selected_item_text.lower():
+            elif:
+                # If Cake Fairy Cake, skip design submission entirely
+                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
+                if "double delite" in selected_item_text.lower():
                     return handle_restart_confirmation("", user_data, phone_id)
+                    
+                return handle_design_request("", {
+                    'sender': user_data['sender'],
+                    'order_number': order_number,
+                    'customer_name': user.contact_name or user.name
+                }, phone_id) 
 
-                elif "triple delite" in selected_item_text.lower():
+            else:
+                # If Cake Fairy Cake, skip design submission entirely
+                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
+                if "triple delite" in selected_item_text.lower():
                     return handle_restart_confirmation("", user_data, phone_id)
                     
                 return handle_design_request("", {
