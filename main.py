@@ -483,8 +483,7 @@ def send_list_message(text, options, recipient, phone_id):
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
         "🎂 *Welcome to Cake Fairy!* 🎂\n\n"
-        "We create delicious, beautifully decorated cakes for all occasions.\n"
-        "Fresh cream is the default filling for all our $20 cakes.\n\n"
+        "We create delicious, beautifully decorated cakes for all occasions.\n\n"        
         "Please choose an option to continue:"
     )
     
@@ -1643,17 +1642,19 @@ def handle_contact_menu(prompt, user_data, phone_id):
 📞 *Contact Information* 📞
 
 You can reach us at:
-• Phone: [Your business phone number]
-• Email: [Your business email]
+• Email: sales@cakefairy1.com 
 • Website: www.cakefairy1.com
 
 Business Hours:
-• Monday-Friday: 8:00 AM - 6:00 PM
-• Saturday: 9:00 AM - 4:00 PM
-• Sunday: Closed
+• Monday-Friday: 8:00 AM - 5:00 PM
+• Saturday: 8:00 AM - 6:00 PM
+• Sunday: 8:00 AM - 3:00 PM
 
 We're located at:
-[Your business address]
+
+Bulawayo: 13 and 14th Avenue along R Mugabe Way Cake Fairy Shop | + ‪+263 77 321 8242‬ 
+
+Harare: 30 Rhodesville Avenue, Greendale | ‪+263 78 826 4258
             """
             send_message(contact_info, user_data['sender'], phone_id)
             return handle_restart_confirmation("", user_data, phone_id)
