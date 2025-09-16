@@ -975,7 +975,7 @@ def handle_order_decision(prompt, user_data, phone_id):
                     'selected_item': selected_item_text
                 })
 
-             elif "double delite" in selected_item_text.lower() and CakeTypeOptions.FRESH_CREAM.value.lower() in cake_type_text.lower():
+            elif "double delite" in selected_item_text.lower() and CakeTypeOptions.FRESH_CREAM.value.lower() in cake_type_text.lower():
                 flavor_msg = "Please choose two flavors: chocolate, vanilla, orange, strawberry, or lemon."
                 send_message(flavor_msg, user_data['sender'], phone_id)
                 update_user_state(user_data['sender'], {
@@ -985,7 +985,7 @@ def handle_order_decision(prompt, user_data, phone_id):
                     'selected_item': selected_item_text
                 })    
 
-             elif "triple delite" in selected_item_text.lower() and CakeTypeOptions.FRESH_CREAM.value.lower() in cake_type_text.lower():
+            elif "triple delite" in selected_item_text.lower() and CakeTypeOptions.FRESH_CREAM.value.lower() in cake_type_text.lower():
                 flavor_msg = "Please choose three flavors: chocolate, vanilla, orange, strawberry, or lemon."
                 send_message(flavor_msg, user_data['sender'], phone_id)
                 update_user_state(user_data['sender'], {
