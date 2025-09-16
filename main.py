@@ -68,28 +68,28 @@ class TierCakesOptions(Enum):
     BACK = "Back to cake types"
 
 class TwoTierOptions(Enum):
-    SIZE_4_6 = "4 inches + 6 inches - $60"
-    SIZE_5_7 = "5 inches + 7 inches - $80"
-    SIZE_6_8 = "6 inches + 8 inches - $110"
-    SIZE_7_9 = "7 inches + 9 inches - $140"
-    SIZE_8_10 = "8 inches + 10 inches - $170"
+    SIZE_4_6 = "4 inch + 6 inch - $60"
+    SIZE_5_7 = "5 inch + 7 inch - $80"
+    SIZE_6_8 = "6 inch + 8 inch - $110"
+    SIZE_7_9 = "7 inch + 9 inch - $140"
+    SIZE_8_10 = "8 inch + 10 inch - $170"
     FONDANT = "Fondant Additional - $20"
     GANACHE = "Ganache Additional - $10"
     SMBC = "SMBC Additional - $15"
     BACK = "Back to tier options"
 
 class ThreeTierOptions(Enum):
-    SIZE_4_6_8 = "4 inches + 6 inches + 8 inches - $140"
-    SIZE_5_7_9 = "5 inches + 7 inches + 9 inches - $170"
-    SIZE_6_8_10 = "6 inches + 8 inches + 10 inches - $210"
+    SIZE_4_6_8 = "4 inch + 6 inch + 8 inch - $140"
+    SIZE_5_7_9 = "5 inch + 7 inch + 9 inch - $170"
+    SIZE_6_8_10 = "6 inch + 8 inch + 10 inch - $210"
     FONDANT = "Fondant Additional - $20"
     GANACHE = "Ganache Additional - $10"
     SMBC = "SMBC Additional - $15"
     BACK = "Back to tier options"
 
 class FruitCakeOptions(Enum):
-    SIZE_6 = "6 inches - $60"
-    SIZE_8 = "8 inches - $80"
+    SIZE_6 = "6 inch - $40"
+    SIZE_8 = "8 inch - $70"
     BACK = "Back to cake types"
 
 class PlasticIcingOptions(Enum):
@@ -479,42 +479,12 @@ def send_list_message(text, options, recipient, phone_id):
         logging.error(f"Unexpected error sending list message: {str(e)}")
         return False
 
-
-# Flavor helpers
-ALLOWED_FLAVORS = ["chocolate", "vanilla", "orange", "strawberry", "lemon"]
-
-def required_flavor_count(selected_item_text):
-    t = (selected_item_text or "").lower()
-    if "triple delite" in t or "triple delight" in t:
-        return 3
-    if "double delite" in t or "double delight" in t:
-        return 2
-    return 1
-
-def parse_flavors_from_text(text):
-    if not text:
-        return []
-    s = text.lower()
-    # Normalize common separators to commas
-    for sep in [" and ", " & ", "/", "\\", "|", ";"]:
-        s = s.replace(sep, ",")
-    parts = [p.strip() for p in s.split(",") if p.strip()]
-    flavors = []
-    for part in parts:
-        for flavor in ALLOWED_FLAVORS:
-            if flavor in part and flavor not in flavors:
-                flavors.append(flavor)
-                break
-    # If no match but exact single allowed sent without separators
-    if not flavors and s.strip() in ALLOWED_FLAVORS:
-        flavors.append(s.strip())
-    return flavors
-
 # Handlers
 def handle_welcome(prompt, user_data, phone_id):
     welcome_msg = (
         "🎂 *Welcome to Cake Fairy!* 🎂\n\n"
-        "We create delicious, beautifully decorated cakes for all occasions.\n\n"        
+        "We create delicious, beautifully decorated cakes for all occasions.\n"
+        "Fresh cream is the default filling for all our $20 cakes.\n\n"
         "Please choose an option to continue:"
     )
     
@@ -974,26 +944,6 @@ def handle_order_decision(prompt, user_data, phone_id):
                     'field': 'flavor',
                     'selected_item': selected_item_text
                 })
-
-            elif "double delite" in selected_item_text.lower() and CakeTypeOptions.FRESH_CREAM.value.lower() in cake_type_text.lower():
-                flavor_msg = "Please choose two flavors: chocolate, vanilla, orange, strawberry, or lemon."
-                send_message(flavor_msg, user_data['sender'], phone_id)
-                update_user_state(user_data['sender'], {
-                    'step': 'get_order_info',
-                    'user': user.to_dict(),
-                    'field': 'flavor',
-                    'selected_item': selected_item_text
-                })    
-
-            elif "triple delite" in selected_item_text.lower() and CakeTypeOptions.FRESH_CREAM.value.lower() in cake_type_text.lower():
-                flavor_msg = "Please choose three flavors: chocolate, vanilla, orange, strawberry, or lemon."
-                send_message(flavor_msg, user_data['sender'], phone_id)
-                update_user_state(user_data['sender'], {
-                    'step': 'get_order_info',
-                    'user': user.to_dict(),
-                    'field': 'flavor',
-                    'selected_item': selected_item_text
-                })      
                 return {
                     'step': 'get_order_info',
                     'user': user.to_dict(),
@@ -1070,38 +1020,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
 
 
         elif current_field == 'flavor':
-            selected_item_text = (user_data.get('selected_item') or "")
-            required = required_flavor_count(selected_item_text)
-            chosen_flavors = parse_flavors_from_text(prompt)
-
-            if len(chosen_flavors) < required:
-                count_text = "flavor" if len(chosen_flavors) == 1 else "flavors"
-                requirement_text = f"{required}"
-                # Identify item label
-                item_label = "Triple Delite" if required == 3 else ("Double Delite" if required == 2 else "Cake Fairy Cake")
-                # Build helpful re-prompt
-                helper_example = (
-                    "e.g., chocolate and vanilla" if required == 2 else
-                    ("e.g., chocolate, vanilla and strawberry" if required == 3 else "e.g., chocolate")
-                )
-                allowed_text = ", ".join(ALLOWED_FLAVORS)
-                msg = (
-                    f"You selected {len(chosen_flavors)} {count_text} when you should select {requirement_text} "
-                    f"since you chose {item_label}.\n\n"
-                    f"Please send {requirement_text} flavors from: {allowed_text}. {helper_example}"
-                )
-                send_message(msg, user_data['sender'], phone_id)
-                # Stay on flavor step without advancing
-                update_user_state(user_data['sender'], {
-                    'step': 'get_order_info',
-                    'user': user.to_dict(),
-                    'field': 'flavor',
-                    'selected_item': user_data.get('selected_item')
-                })
-                return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'flavor'}
-
-            # Store flavors as a nice comma-separated string
-            user.flavor = ", ".join(chosen_flavors) if required > 1 else chosen_flavors[0]
+            user.flavor = prompt
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
@@ -1312,10 +1231,6 @@ Please visit www.cakefairy1.com for terms and conditions.
                 selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
                 if "cake fairy" in selected_item_text.lower():
                     return handle_restart_confirmation("", user_data, phone_id)
-                elif "double delite" in selected_item_text.lower():
-                    return handle_restart_confirmation("", user_data, phone_id)
-                elif "triple delite" in selected_item_text.lower():
-                    return handle_restart_confirmation("", user_data, phone_id)    
                 return handle_design_request("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
@@ -1627,24 +1542,24 @@ def handle_pricing_menu(prompt, user_data, phone_id):
 • Extra Tall Cake - $65
 
 *2-Tier Cakes:*
-• 4 inches + 6 inches - $60
-• 5 inches + 7 inches - $80
-• 6 inches + 8 inches - $110
-• 7 inches + 9 inches - $140
-• 8 inches + 10 inches - $170
+• 4 inch + 6 inch - $60
+• 5 inch + 7 inch - $80
+• 6 inch + 8 inch - $110
+• 7 inch + 9 inch - $140
+• 8 inch + 10 inch - $170
 
 *3-Tier Cakes:*
-• 4 inches + 6 inches + 8 inches - $140
-• 5 inches + 7 inches + 9 inches - $170
-• 6 inches + 8 inches + 10 inches - $210
+• 4 inch + 6 inch + 8 inch - $140
+• 5 inch + 7 inch + 9 inch - $170
+• 6 inch + 8 inch + 10 inch - $210
             """
             
         elif selected_option == CakeTypeOptions.FRUIT:
             pricing_msg = """
 💰 *Fruit Cakes Pricing* 💰
 
-• 6 inches - $40
-• 8 inches - $70
+• 6 inch - $40
+• 8 inch - $70
             """
             
         elif selected_option == CakeTypeOptions.PLASTIC_ICING:
@@ -1728,19 +1643,17 @@ def handle_contact_menu(prompt, user_data, phone_id):
 📞 *Contact Information* 📞
 
 You can reach us at:
-• Email: sales@cakefairy1.com 
+• Phone: [Your business phone number]
+• Email: [Your business email]
 • Website: www.cakefairy1.com
 
 Business Hours:
-• Monday-Friday: 8:00 AM - 5:00 PM
-• Saturday: 8:00 AM - 6:00 PM
-• Sunday: 8:00 AM - 3:00 PM
+• Monday-Friday: 8:00 AM - 6:00 PM
+• Saturday: 9:00 AM - 4:00 PM
+• Sunday: Closed
 
 We're located at:
-
-Bulawayo: 13 and 14th Avenue along R Mugabe Way Cake Fairy Shop | + ‪+263 77 321 8242‬ 
-
-Harare: 30 Rhodesville Avenue, Greendale | ‪+263 78 826 4258
+[Your business address]
             """
             send_message(contact_info, user_data['sender'], phone_id)
             return handle_restart_confirmation("", user_data, phone_id)
