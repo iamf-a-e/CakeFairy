@@ -1049,7 +1049,54 @@ def handle_get_order_info(prompt, user_data, phone_id):
 
 
         elif current_field == 'flavor':
-            user.flavor = prompt
+            # Determine expected number of flavors based on selected item
+            selected_item_text = (user_data.get('selected_item') or "").lower()
+            expected_count = 1
+            selected_label = None
+            if "double delite" in selected_item_text:
+                expected_count = 2
+                selected_label = "Double Delite"
+            elif "triple delite" in selected_item_text:
+                expected_count = 3
+                selected_label = "Triple Delite"
+
+            # Parse provided flavors (comma or 'and' separated)
+            raw_text = (prompt or "")
+            normalized_text = raw_text.replace('\n', ' ').replace('&', ' and ')
+            normalized_text = normalized_text.replace(' AND ', ' and ')
+            normalized_text = normalized_text.replace(' and ', ',')
+            flavor_parts = [part.strip().strip('.') for part in normalized_text.split(',')]
+            flavor_parts = [part for part in flavor_parts if part]
+            provided_count = len(flavor_parts)
+
+            # If fewer flavors than required for Double/Triple Delite, re-prompt and stay on this step
+            if expected_count > 1 and provided_count < expected_count:
+                example_tail = ", strawberry" if expected_count == 3 else ""
+                count_word = "flavor" if provided_count == 1 else "flavors"
+                send_message(
+                    f"You sent {provided_count} {count_word}, but selected {selected_label} which requires {expected_count} flavors. "
+                    f"Please send {expected_count} flavors separated by commas (e.g., chocolate, vanilla{example_tail}).",
+                    user_data['sender'],
+                    phone_id
+                )
+                # Keep awaiting flavors
+                update_user_state(user_data['sender'], {
+                    'step': 'get_order_info',
+                    'user': user.to_dict(),
+                    'field': 'flavor',
+                    'selected_item': user_data.get('selected_item')
+                })
+                return {
+                    'step': 'get_order_info',
+                    'user': user.to_dict(),
+                    'field': 'flavor'
+                }
+
+            # Accept the flavors. If user provided more than required, trim to expected_count
+            if expected_count > 1 and provided_count > expected_count:
+                flavor_parts = flavor_parts[:expected_count]
+
+            user.flavor = ", ".join(flavor_parts) if flavor_parts else prompt
             update_user_state(user_data['sender'], {
                 'step': 'get_order_info',
                 'user': user.to_dict(),
