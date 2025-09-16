@@ -1256,15 +1256,16 @@ Please visit www.cakefairy1.com for terms and conditions.
                     'selected_item': user_data.get('selected_item')
                 }, phone_id)
             
-                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
-                if "cake fairy" in selected_item_text.lower():
-                    return handle_restart_confirmation("", user_data, phone_id)
-    
-                elif "double delite" in selected_item_text.lower():
-                    return handle_restart_confirmation("", user_data, phone_id)
-    
-                elif "triple delite" in selected_item_text.lower():
-                    return handle_restart_confirmation("", user_data, phone_id)
+            # If payment is on collection or after handling PoP, decide whether to skip design
+            selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
+            if "cake fairy" in selected_item_text.lower():
+                return handle_restart_confirmation("", user_data, phone_id)
+
+            elif "double delite" in selected_item_text.lower():
+                return handle_restart_confirmation("", user_data, phone_id)
+
+            elif "triple delite" in selected_item_text.lower():
+                return handle_restart_confirmation("", user_data, phone_id)
 
             # Otherwise proceed to request a design image
             #return handle_design_request("", user_data, phone_id)
@@ -1421,9 +1422,9 @@ Here's the proof of payment they sent:
                 phone_id
             )
 
-            # If Cake Fairy Cake was selected, skip design submission entirely
+            # If Cake Fairy Cake or Double/Triple Delite was selected, skip design submission entirely
             selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
-            if "cake fairy" in selected_item_text.lower():
+            if any(x in selected_item_text.lower() for x in ["cake fairy", "double delite", "triple delite"]):
                 return handle_restart_confirmation("", user_data, phone_id)
 
             # Otherwise proceed to request a design image
