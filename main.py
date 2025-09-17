@@ -59,7 +59,8 @@ class CakeTypeOptions(Enum):
 class FreshCreamOptions(Enum):
     CAKE_FAIRY = "Cake Fairy Cake - $20"
     DOUBLE_DELITE = "Double Delite (2 flavours) - $25"
-    TRIPLE_DELITE = "Triple Delite (3 flavours) - $30"    
+    TRIPLE_DELITE = "Triple Delite (3 flavours) - $30"
+    THEMED_CAKES = "Themed Cakes"
     BACK = "Back to cake types"
 
 class TierCakesOptions(Enum):
