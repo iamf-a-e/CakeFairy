@@ -2362,5 +2362,32 @@ def webhook():
 def home():
     return render_template('connected.html')
 
+
+@app.route('/sendWhatsApp', methods=['POST'])
+def send_whatsapp():
+    try:
+        data = request.get_json()
+        recipient = data.get("to")
+        message = data.get("message")
+
+        url = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
+        headers = {
+            "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": recipient,
+            "type": "text",
+            "text": {"body": message}
+        }
+
+        r = requests.post(url, headers=headers, json=payload)
+        r.raise_for_status()
+
+        return jsonify({"status": "sent", "response": r.json()}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
