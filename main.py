@@ -88,8 +88,8 @@ class ThreeTierOptions(Enum):
     BACK = "Back to tier options"
 
 class FruitCakeOptions(Enum):
-    SIZE_6 = "6 inch - $40"
-    SIZE_8 = "8 inch - $70"
+    SIZE_6 = "6 inch - $60"
+    SIZE_8 = "8 inch - $80"
     BACK = "Back to cake types"
 
 class PlasticIcingOptions(Enum):
