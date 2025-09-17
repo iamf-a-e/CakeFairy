@@ -1,4 +1,3 @@
-
 import os
 import logging
 import requests
@@ -2383,10 +2382,18 @@ def send_whatsapp():
         }
 
         r = requests.post(url, headers=headers, json=payload)
-        r.raise_for_status()
+
+        # Print response for debugging
+        print("WhatsApp API response:", r.status_code, r.text)
+
+        if r.status_code >= 400:
+            return jsonify({"status": "error", "response": r.json()}), r.status_code
 
         return jsonify({"status": "sent", "response": r.json()}), 200
     except Exception as e:
+        import traceback
+        print("Error sending message:", e)
+        print(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
