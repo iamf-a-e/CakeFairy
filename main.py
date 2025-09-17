@@ -1,3 +1,4 @@
+
 import os
 import logging
 import requests
@@ -1296,6 +1297,17 @@ Please visit www.cakefairy1.com for terms and conditions.
             
             # Payment check
             if user.payment_method and "collection" not in user.payment_method.lower():
+                # For Fresh Cream → Themed Cakes, skip proof of payment and go straight to design submission
+                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
+                cake_type_text = (user_data.get('cake_type') or "")
+                if ("themed" in selected_item_text.lower()) and ("fresh cream" in cake_type_text.lower()):
+                    return handle_design_request("", {
+                        'sender': user_data['sender'],
+                        'order_number': order_number,
+                        'customer_name': user.contact_name or user.name,
+                        'selected_item': selected_item_text,
+                        'cake_type': cake_type_text
+                    }, phone_id)
                 return handle_proof_of_payment("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
@@ -1335,7 +1347,9 @@ Please visit www.cakefairy1.com for terms and conditions.
                 return handle_design_request("", {
                     'sender': user_data['sender'],
                     'order_number': order_number,
-                    'customer_name': user.contact_name or user.name
+                    'customer_name': user.contact_name or user.name,
+                    'selected_item': user_data.get('selected_item') or user_data.get('selected_option'),
+                    'cake_type': user_data.get('cake_type')
                 }, phone_id)
 
             
@@ -1393,10 +1407,29 @@ Here's the design image they sent:
                 send_image_by_id(image_id, owner_phone, phone_id)
             
             # Confirm receipt to customer
+            themed_fresh_cream = False
+            try:
+                selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "").lower()
+                cake_type_text = (user_data.get('cake_type') or "").lower()
+                themed_fresh_cream = ("themed" in selected_item_text) and ("fresh cream" in cake_type_text)
+            except Exception:
+                themed_fresh_cream = False
+
+            if themed_fresh_cream:
+                confirmation_text = (
+                    "✅ Thank you for sending your cake design! "
+                    "We've received your image and will use it as reference for your order. "
+                    "An agent will get in touch with you shortly with the cake price."
+                )
+            else:
+                confirmation_text = (
+                    "✅ Thank you for sending your cake design! "
+                    "We've received your image and will use it as reference for your order. "
+                    "Our team will contact you if we have any questions about the design."
+                )
+
             send_message(
-                "✅ Thank you for sending your cake design! "
-                "We've received your image and will use it as reference for your order. "
-                "Our team will contact you if we have any questions about the design.",
+                confirmation_text,
                 user_data['sender'],
                 phone_id
             )
@@ -1757,7 +1790,7 @@ We're located at:
 
 Bulawayo: 13 and 14th Avenue along R Mugabe Way Cake Fairy Shop | + ‪+263 77 321 8242‬ 
 
-Harare: 30 Rhodesville Avenue, Greendale | ‪+263 78 826 4258
+Harare: 30 Rhodesville Avenue, Greendale | ‪+263 78 826 4258
             """
             send_message(contact_info, user_data['sender'], phone_id)
             return handle_restart_confirmation("", user_data, phone_id)
