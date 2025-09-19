@@ -981,7 +981,7 @@ def handle_order_decision(prompt, user_data, phone_id):
                 }
 
             elif "themed cakes" in selected_item_text.lower() and CakeTypeOptions.FRESH_CREAM.value.lower() in cake_type_text.lower():
-                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon etc.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
+                flavor_msg = "Please choose one flavor: Chocolate, Vanilla, RedVelvet, Strawberry or Blackforest etc.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
                 send_message(flavor_msg, user_data['sender'], phone_id)
                 update_user_state(user_data['sender'], {
                     'step': 'get_order_info',
