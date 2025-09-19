@@ -980,6 +980,21 @@ def handle_order_decision(prompt, user_data, phone_id):
                     'field': 'flavor'
                 }
 
+            elif "themed cakes" in selected_item_text.lower() and CakeTypeOptions.FRESH_CREAM.value.lower() in cake_type_text.lower():
+                flavor_msg = "Please choose one flavor: chocolate, vanilla, orange, strawberry, or lemon etc.\n\nN.B Choosing 2 flavors attracts an extra charge of $5"
+                send_message(flavor_msg, user_data['sender'], phone_id)
+                update_user_state(user_data['sender'], {
+                    'step': 'get_order_info',
+                    'user': user.to_dict(),
+                    'field': 'flavor',
+                    'selected_item': selected_item_text
+                })
+                return {
+                    'step': 'get_order_info',
+                    'user': user.to_dict(),
+                    'field': 'flavor'
+                }
+
             # Default flow asks for theme
             send_message(
                 "Great! Let's start your order. Which theme would you want for the cake? e.g Barbie",
