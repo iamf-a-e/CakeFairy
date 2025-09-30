@@ -17,7 +17,7 @@ wa_token = os.environ.get("WA_TOKEN")
 phone_id = os.environ.get("PHONE_ID")
 redis_url = os.environ.get("REDIS_URL")
 owner_phone = os.environ.get("OWNER_PHONE")
-AGENT_NUMBERS = ["+263772210415"]
+AGENT_NUMBERS = ["+263773218242"]
 HARARE = ["+263788264258", "+263788264257"]
 BULAWAYO = ["+263773218242", "+263718339551"]
 
