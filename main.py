@@ -2070,6 +2070,7 @@ def end_agent_session(customer, agent):
 def handle_message(prompt, user_data, phone_id):
     sender = user_data["sender"]
 
+   
     # ===== AGENT HANDLING =====
     if sender in AGENT_NUMBERS:
         if user_data.get("step") == "agent_chat" and "customer" in user_data:
@@ -2082,33 +2083,15 @@ def handle_message(prompt, user_data, phone_id):
                 send_message(f"👋 Chat with {customer} ended. Handover back to bot.", sender, phone_id)
                 return {"step": "main_menu"}
             else:
-                # Forward agent message to customer
+                # Check if agent is sending an image (you'd need to handle this from webhook)
+                # For now, just forward text messages
                 send_message(f"👨‍💼 Agent: {prompt}", customer, phone_id)
                 return user_data
         else:
             send_message("⚠️ No active customer session. Please wait for a request.", sender, phone_id)
             return user_data
 
-
-    if sender in HARARE:
-        if user_data.get("step") == "agent_chat" and "customer" in user_data:
-            customer = user_data["customer"]
-            if prompt.lower().strip() == "exit":
-                # End agent session - update BOTH agent and customer states
-                update_user_state(customer, {"step": "main_menu"})
-                update_user_state(sender, {"step": "main_menu"})
-                send_message("👋 The agent has left the chat. You're now back with the bot.", customer, phone_id)
-                send_message(f"👋 Chat with {customer} ended. Handover back to bot.", sender, phone_id)
-                return {"step": "main_menu"}
-            else:
-                # Forward agent message to customer
-                send_message(f"👨‍💼 Agent: {prompt}", customer, phone_id)
-                return user_data
-        else:
-            send_message("⚠️ No active customer session. Please wait for a request.", sender, phone_id)
-            return user_data
-
-
+    
     if sender in BULAWAYO:
         if user_data.get("step") == "agent_chat" and "customer" in user_data:
             customer = user_data["customer"]
@@ -2120,13 +2103,36 @@ def handle_message(prompt, user_data, phone_id):
                 send_message(f"👋 Chat with {customer} ended. Handover back to bot.", sender, phone_id)
                 return {"step": "main_menu"}
             else:
-                # Forward agent message to customer
+                # Check if agent is sending an image (you'd need to handle this from webhook)
+                # For now, just forward text messages
                 send_message(f"👨‍💼 Agent: {prompt}", customer, phone_id)
                 return user_data
         else:
             send_message("⚠️ No active customer session. Please wait for a request.", sender, phone_id)
             return user_data
-            
+
+
+    
+    if sender in HARARE:
+        if user_data.get("step") == "agent_chat" and "customer" in user_data:
+            customer = user_data["customer"]
+            if prompt.lower().strip() == "exit":
+                # End agent session - update BOTH agent and customer states
+                update_user_state(customer, {"step": "main_menu"})
+                update_user_state(sender, {"step": "main_menu"})
+                send_message("👋 The agent has left the chat. You're now back with the bot.", customer, phone_id)
+                send_message(f"👋 Chat with {customer} ended. Handover back to bot.", sender, phone_id)
+                return {"step": "main_menu"}
+            else:
+                # Check if agent is sending an image (you'd need to handle this from webhook)
+                # For now, just forward text messages
+                send_message(f"👨‍💼 Agent: {prompt}", customer, phone_id)
+                return user_data
+        else:
+            send_message("⚠️ No active customer session. Please wait for a request.", sender, phone_id)
+            return user_data
+        
+    
     
     # ===== CUSTOMER HANDLING =====
     if user_data.get("step") == "agent_chat" and "agent" in user_data:
@@ -2139,8 +2145,16 @@ def handle_message(prompt, user_data, phone_id):
             send_message("👋 The agent has ended the chat. You're now back with the bot.", sender, phone_id)
             return {"step": "main_menu"}
         
-        # Forward customer message to agent
-        send_message(f"🧑 Customer {sender}: {prompt}", agent, phone_id)
+        # Check if this is an image message and forward the actual image
+        if prompt.startswith('IMAGE:'):
+            image_id = prompt[6:]  # Extract the image ID
+            # Forward the image to the agent
+            send_image_by_id(image_id, agent, phone_id)
+            # Also send a text notification
+            send_message(f"🧑 Customer {sender} sent an image", agent, phone_id)
+        else:
+            # Forward regular text message to agent
+            send_message(f"🧑 Customer {sender}: {prompt}", agent, phone_id)
         return user_data
 
     try:
