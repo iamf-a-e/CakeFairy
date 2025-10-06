@@ -18,7 +18,7 @@ phone_id = os.environ.get("PHONE_ID")
 redis_url = os.environ.get("REDIS_URL")
 owner_phone = os.environ.get("OWNER_PHONE")
 AGENT_NUMBERS = ["+263773218242"]
-HARARE = ["+263785019494", "+263788264258", "+263788264257"]
+HARARE = ["+263785019494"]
 BULAWAYO = ["+263773218242", "+263718339551"]
 
 # Redis client setup
