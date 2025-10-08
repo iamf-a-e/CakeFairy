@@ -1252,12 +1252,18 @@ def handle_get_order_info(prompt, user_data, phone_id):
 def handle_confirm_order(prompt, user_data, phone_id):
     try:
         if "yes" in prompt.lower() or "confirm_yes" in prompt:
-            user = User.from_dict(user_data['user'])
-            
+            # ✅ Always get the freshest state before building the order
+            latest_state = get_user_state(user_data['sender'])
+            latest_user_data = latest_state.get("user", user_data.get("user", {}))
+            user = User.from_dict(latest_user_data)
+
+            # Debug log: check that due_date and due_time exist before saving
+            logging.info(f"✅ Finalizing order for {user.phone} with due_date={user.due_date}, due_time={user.due_time}")
+
             # Generate order number
             order_number = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            
-            # Save order to Redis
+
+            # ✅ Save the order with the updated user info
             order_data = {
                 'order_number': order_number,
                 'user': user.to_dict(),
@@ -1265,9 +1271,9 @@ def handle_confirm_order(prompt, user_data, phone_id):
                 'timestamp': datetime.now().isoformat(),
                 'status': 'pending'
             }
-            
+
             redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_data))  # 7 days expiration
-            
+
             # Send confirmation to customer
             confirmation_msg = f"""
 ✅ *ORDER CONFIRMED* ✅
@@ -1285,10 +1291,9 @@ if we need any additional information.
 
 Please visit www.cakefairy1.com for terms and conditions.
             """
-            
             send_message(confirmation_msg, user_data['sender'], phone_id)
-            
-            # Notify agent/owner
+
+            # Notify agent/owner with all order details, including due date
             if owner_phone:
                 agent_notification = f"""
 📋 *NEW CAKE ORDER* 📋
@@ -1308,10 +1313,9 @@ Please visit www.cakefairy1.com for terms and conditions.
 *Payment:* {user.payment_method}
                 """
                 send_message(agent_notification, owner_phone, phone_id)
-            
+
             # Payment check
             if user.payment_method and "collection" not in user.payment_method.lower():
-                # For Fresh Cream → Themed Cakes, skip proof of payment and go straight to design submission
                 selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
                 cake_type_text = (user_data.get('cake_type') or "")
                 if ("themed" in selected_item_text.lower()) and ("fresh cream" in cake_type_text.lower()):
@@ -1329,44 +1333,21 @@ Please visit www.cakefairy1.com for terms and conditions.
                     'payment_method': user.payment_method,
                     'selected_item': user_data.get('selected_item')
                 }, phone_id)
-            
-            # If payment is on collection or after handling PoP, decide whether to skip design
+
+            # Skip design if it's a basic cake type
             selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
-            if "cake fairy" in selected_item_text.lower():
+            if any(x in selected_item_text.lower() for x in ["cake fairy", "double delite", "triple delite"]):
                 return handle_restart_confirmation("", user_data, phone_id)
 
-            elif "double delite" in selected_item_text.lower():
-                return handle_restart_confirmation("", user_data, phone_id)
+            # Otherwise request a design
+            return handle_design_request("", {
+                'sender': user_data['sender'],
+                'order_number': order_number,
+                'customer_name': user.contact_name or user.name,
+                'selected_item': user_data.get('selected_item') or user_data.get('selected_option'),
+                'cake_type': user_data.get('cake_type')
+            }, phone_id)
 
-            elif "triple delite" in selected_item_text.lower():
-                return handle_restart_confirmation("", user_data, phone_id)
-
-            # Otherwise proceed to request a design image
-            #return handle_design_request("", user_data, phone_id)
-            
-            #elif (user_data.get('selected_item') or user_data.get('selected_option') or "").lower().find("cake fairy") != -1:
-                # If Cake Fairy Cake, skip design submission entirely
-                #return handle_restart_confirmation("", user_data, phone_id)
-            
-            #elif (user_data.get('selected_item') or user_data.get('selected_option') or "").lower().find("double delite") != -1:
-                # If Double Delite Cake, skip design submission entirely
-                #return handle_restart_confirmation("", user_data, phone_id)
-            
-            #elif (user_data.get('selected_item') or user_data.get('selected_option') or "").lower().find("triple delite") != -1:
-                # If Triple Delite Cake, skip design submission entirely
-                #return handle_restart_confirmation("", user_data, phone_id)
-            
-            else:
-                # Otherwise, request design submission
-                return handle_design_request("", {
-                    'sender': user_data['sender'],
-                    'order_number': order_number,
-                    'customer_name': user.contact_name or user.name,
-                    'selected_item': user_data.get('selected_item') or user_data.get('selected_option'),
-                    'cake_type': user_data.get('cake_type')
-                }, phone_id)
-
-            
         else:
             # Restart order process
             send_message("Let's start over with your order. Please provide the theme for your cake:", user_data['sender'], phone_id)
@@ -1378,7 +1359,7 @@ Please visit www.cakefairy1.com for terms and conditions.
                 'selected_item': user_data.get('selected_item')
             })
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'theme'}
-            
+
     except Exception as e:
         logging.error(f"Error in handle_confirm_order: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
