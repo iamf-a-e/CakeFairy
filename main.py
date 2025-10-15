@@ -1282,7 +1282,7 @@ def handle_confirm_order(prompt, user_data, phone_id):
 *Item:* {user_data.get('selected_item', 'Custom Cake')}
 
 Thank you for your order, {user.contact_name or user.name}!
-Your order has been received and is being processed.
+Your order has been received and is being processed. We need at least 24hrs to process your order.
 
 We'll contact {user.contact_name or 'you'} at {user.contact_number or user.phone} 
 if we need any additional information.
