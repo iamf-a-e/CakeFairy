@@ -1272,9 +1272,13 @@ def handle_confirm_order(prompt, user_data, phone_id):
                 'status': 'pending'
             }
             
-            # Add images if available
-            order_data['proof_image'] = image_id
-            order_data['design_image'] = image_id
+            # Add images if available            
+            proof_data = redis_client.get(f"payment_proof:{user_data['sender']}")
+            design_data = redis_client.get(f"design_image:{user_data['sender']}")
+            
+            order_data['proof_image'] = json.loads(proof_data).get('image_id') if proof_data else None
+            order_data['design_image'] = json.loads(design_data).get('image_id') if design_data else None
+
             
             # Save to Redis for 7 days
             redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_data))
