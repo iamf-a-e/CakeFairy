@@ -9,6 +9,8 @@ import json
 import traceback
 from enum import Enum
 from upstash_redis import Redis
+import base64
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -1366,7 +1368,109 @@ Please visit www.cakefairy1.com for terms and conditions.
         return {'step': 'main_menu'}
 
 
+def save_image_to_redis(image_id, user_data, redis_client):
+    """
+    Download image from WhatsApp and save to Upstash Redis
+    """
+    try:
+        # Get image URL from WhatsApp API
+        image_url = get_media_url(image_id)
+        if not image_url:
+            print(f"Could not get image URL for ID: {image_id}")
+            return None
+        
+        # Download image data
+        response = requests.get(image_url)
+        if response.status_code != 200:
+            print(f"Failed to download image: {response.status_code}")
+            return None
+        
+        image_data = response.content
+        
+        # Create unique key for Redis
+        order_number = user_data.get('order_number', 'unknown')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        redis_key = f"design_image:{order_number}:{timestamp}"
+        
+        # Prepare metadata
+        metadata = {
+            'order_number': order_number,
+            'customer_name': user_data.get('customer_name', 'Unknown'),
+            'customer_phone': user_data['sender'],
+            'timestamp': datetime.now().isoformat(),
+            'image_id': image_id,
+            'size_bytes': len(image_data),
+            'content_type': response.headers.get('content-type', 'image/jpeg')
+        }
+        
+        # Save image data and metadata to Redis
+        redis_client.setex(
+            f"{redis_key}:data", 
+            60*60*24*30,  # 30 days expiry for image data
+            base64.b64encode(image_data).decode('utf-8')
+        )
+        
+        redis_client.setex(
+            f"{redis_key}:metadata",
+            60*60*24*30,  # 30 days expiry for metadata
+            json.dumps(metadata)
+        )
+        
+        print(f"Image saved to Redis with key: {redis_key}")
+        return redis_key
+        
+    except Exception as e:
+        print(f"Error saving image to Redis: {str(e)}")
+        return None
 
+def get_media_url(media_id):
+    """
+    Get media URL from WhatsApp Business API
+    """
+    try:
+        # Get media URL from WhatsApp API
+        url = f"https://graph.facebook.com/v19.0/{media_id}"
+        headers = {
+            'Authorization': f'Bearer {wa_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            media_data = response.json()
+            return media_data.get('url')
+        else:
+            print(f"Failed to get media URL: {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"Error getting media URL: {str(e)}")
+        return None
+
+def retrieve_image_from_redis(redis_key, redis_client):
+    """
+    Retrieve image from Redis database
+    """
+    try:
+        # Get image data
+        image_data_b64 = redis_client.get(f"{redis_key}:data")
+        if not image_data_b64:
+            return None, None
+        
+        # Get metadata
+        metadata_json = redis_client.get(f"{redis_key}:metadata")
+        metadata = json.loads(metadata_json) if metadata_json else {}
+        
+        # Decode image data
+        image_data = base64.b64decode(image_data_b64)
+        
+        return image_data, metadata
+        
+    except Exception as e:
+        print(f"Error retrieving image from Redis: {str(e)}")
+        return None, None
+
+# Now modify the handle_design_request function
 def handle_design_request(prompt, user_data, phone_id):
     try:
         # This function expects an image from the user
@@ -1384,6 +1488,9 @@ def handle_design_request(prompt, user_data, phone_id):
         if prompt and prompt.startswith('IMAGE:'):
             image_id = prompt[6:]  # Remove 'IMAGE:' prefix to get image ID
             
+            # Download and save image to Redis
+            image_saved = save_image_to_redis(image_id, user_data, redis_client)
+            
             # Notify agent/owner about the design image
             if owner_phone:
                 # First send the informational message
@@ -1396,6 +1503,9 @@ def handle_design_request(prompt, user_data, phone_id):
 
 Here's the design image they sent:
                 """
+                if image_saved:
+                    design_msg += f"\n✅ Image has been saved to database (Redis ID: {image_saved})"
+                
                 send_message(design_msg, owner_phone, phone_id)
                 
                 # Then send the actual image immediately after the message
@@ -1430,7 +1540,11 @@ Here's the design image they sent:
             )
             
             # Now go to restart confirmation
-            return handle_restart_confirmation("", user_data, phone_id)
+            return handle_restart_confirmation("", {
+                'sender': user_data['sender'],
+                'redis_image_key': image_saved,
+                'order_number': user_data.get('order_number')
+            }, phone_id)
         
         # Initial entry - ask for design
         send_message(
@@ -1445,7 +1559,7 @@ Here's the design image they sent:
         logging.error(f"Error in handle_design_request: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return handle_restart_confirmation("", user_data, phone_id)
-
+        
 
 def handle_proof_of_payment(prompt, user_data, phone_id):
     try:
@@ -1471,6 +1585,9 @@ def handle_proof_of_payment(prompt, user_data, phone_id):
         if prompt and prompt.startswith('IMAGE:'):
             image_id = prompt[6:]  # Remove 'IMAGE:' prefix to get image ID
             
+            # Download and save payment image to Redis
+            payment_image_saved = save_payment_image_to_redis(image_id, user_data, redis_client)
+            
             # Notify agent/owner about the proof of payment
             if owner_phone:
                 # First send the informational message
@@ -1484,6 +1601,9 @@ def handle_proof_of_payment(prompt, user_data, phone_id):
 
 Here's the proof of payment they sent:
                 """
+                if payment_image_saved:
+                    payment_msg += f"\n✅ Payment image has been saved to database (Redis ID: {payment_image_saved})"
+                
                 send_message(payment_msg, owner_phone, phone_id)
                 
                 # Then send the actual image immediately after the message
@@ -1501,7 +1621,11 @@ Here's the proof of payment they sent:
             # If Cake Fairy Cake or Double/Triple Delite was selected, skip design submission entirely
             selected_item_text = (user_data.get('selected_item') or user_data.get('selected_option') or "")
             if any(x in selected_item_text.lower() for x in ["cake fairy", "double delite", "triple delite"]):
-                return handle_restart_confirmation("", user_data, phone_id)
+                return handle_restart_confirmation("", {
+                    'sender': user_data['sender'],
+                    'redis_payment_image_key': payment_image_saved,
+                    'order_number': user_data.get('order_number')
+                }, phone_id)
 
             # Otherwise proceed to request a design image
             return handle_design_request("", user_data, phone_id)
@@ -1526,6 +1650,62 @@ Here's the proof of payment they sent:
         logging.error(f"Error in handle_proof_of_payment: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return handle_restart_confirmation("", user_data, phone_id)
+
+def save_payment_image_to_redis(image_id, user_data, redis_client):
+    """
+    Download payment image from WhatsApp and save to Upstash Redis
+    """
+    try:
+        # Get image URL from WhatsApp API
+        image_url = get_media_url(image_id)
+        if not image_url:
+            print(f"Could not get image URL for ID: {image_id}")
+            return None
+        
+        # Download image data
+        response = requests.get(image_url)
+        if response.status_code != 200:
+            print(f"Failed to download image: {response.status_code}")
+            return None
+        
+        image_data = response.content
+        
+        # Create unique key for Redis
+        order_number = user_data.get('order_number', 'unknown')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        redis_key = f"payment_image:{order_number}:{timestamp}"
+        
+        # Prepare metadata
+        metadata = {
+            'order_number': order_number,
+            'customer_name': user_data.get('customer_name', 'Unknown'),
+            'customer_phone': user_data['sender'],
+            'payment_method': user_data.get('payment_method', 'Unknown'),
+            'timestamp': datetime.now().isoformat(),
+            'image_id': image_id,
+            'size_bytes': len(image_data),
+            'content_type': response.headers.get('content-type', 'image/jpeg')
+        }
+        
+        # Save image data and metadata to Redis
+        redis_client.setex(
+            f"{redis_key}:data", 
+            60*60*24*30,  # 30 days expiry for image data
+            base64.b64encode(image_data).decode('utf-8')
+        )
+        
+        redis_client.setex(
+            f"{redis_key}:metadata",
+            60*60*24*30,  # 30 days expiry for metadata
+            json.dumps(metadata)
+        )
+        
+        print(f"Payment image saved to Redis with key: {redis_key}")
+        return redis_key
+        
+    except Exception as e:
+        print(f"Error saving payment image to Redis: {str(e)}")
+        return None
         
 
 def send_image_by_id(image_id, recipient, phone_id):
