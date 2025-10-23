@@ -1269,7 +1269,7 @@ def handle_confirm_order(prompt, user_data, phone_id):
                 'user': user.to_dict(),
                 'selected_item': user_data.get('selected_item'),
                 'timestamp': datetime.now().isoformat(),
-                'status': 'pending'
+                'status': 'pending',
                 order_data["proof_image"] = image_id
                 order_data["design_image"] = image_id
                 redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_data))
