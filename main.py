@@ -1270,6 +1270,10 @@ def handle_confirm_order(prompt, user_data, phone_id):
                 'selected_item': user_data.get('selected_item'),
                 'timestamp': datetime.now().isoformat(),
                 'status': 'pending'
+                order_data["proof_image"] = image_id
+                order_data["design_image"] = image_id
+                redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_data))
+
             }
 
             redis_client.setex(f"order:{order_number}", 604800, json.dumps(order_data))  # 7 days expiration
@@ -1400,6 +1404,17 @@ Here's the design image they sent:
                 
                 # Then send the actual image immediately after the message
                 send_image_by_id(image_id, owner_phone, phone_id)
+
+            redis_client.setex(
+                f"design_image:{user_data['sender']}",
+                604800,
+                json.dumps({
+                    "order_number": user_data.get('order_number'),
+                    "image_id": image_id,
+                    "timestamp": datetime.now().isoformat()
+                })
+            )
+
             
             # Confirm receipt to customer
             themed_fresh_cream = False
@@ -1488,6 +1503,18 @@ Here's the proof of payment they sent:
                 
                 # Then send the actual image immediately after the message
                 send_image_by_id(image_id, owner_phone, phone_id)
+
+           
+            redis_client.setex(
+                f"payment_proof:{user_data['sender']}", 
+                604800,  # 7 days
+                json.dumps({
+                    "order_number": user_data.get('order_number'),
+                    "image_id": image_id,
+                    "timestamp": datetime.now().isoformat()
+                })
+            )
+
             
             # Confirm receipt to customer
             send_message(
