@@ -9,6 +9,8 @@ import json
 import traceback
 from enum import Enum
 from upstash_redis import Redis
+import base64
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -1379,6 +1381,15 @@ Please visit www.cakefairy1.com for terms and conditions.
 
 def handle_design_request(prompt, user_data, phone_id):
     try:
+        if prompt and prompt.startswith('IMAGE:'):
+            image_id = prompt[6:]
+            order_number = user_data.get('order_number')
+            
+            # Download and store the image permanently
+            if order_number:
+                download_and_store_image(image_id, "design", order_number, user_data['sender'])
+
+        
         # This function expects an image from the user
         # If we get text instead of an image, prompt again
         if prompt and not prompt.startswith('IMAGE:'):
@@ -1470,6 +1481,15 @@ Here's the design image they sent:
 
 def handle_proof_of_payment(prompt, user_data, phone_id):
     try:
+        if prompt and prompt.startswith('IMAGE:'):
+            image_id = prompt[6:]
+            order_number = user_data.get('order_number')
+            
+            # Download and store the image permanently
+            if order_number:
+                download_and_store_image(image_id, "payment", order_number, user_data['sender'])
+
+        
         # This function expects an image from the user
         # If we get text instead of an image, prompt again
         if prompt and not prompt.startswith('IMAGE:'):
@@ -1902,6 +1922,54 @@ def handle_order_menu(prompt, user_data, phone_id):
         logging.error(f"Error in handle_order_menu: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
+
+
+def download_and_store_image(image_id, image_type, order_number, phone_number):
+    """Download image from WhatsApp and store it permanently in Redis"""
+    try:
+        print(f"📥 Downloading {image_type} image: {image_id} for order {order_number}")
+        wa_token = os.environ.get("WA_TOKEN")
+        
+        # Get image URL from WhatsApp API
+        url = f"https://graph.facebook.com/v19.0/{image_id}"
+        headers = {'Authorization': f'Bearer {wa_token}'}
+        
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            image_data = response.json()
+            image_url = image_data.get('url')
+            
+            if image_url:
+                # Download the actual image data
+                img_response = requests.get(image_url, headers=headers)
+                if img_response.status_code == 200:
+                    # Store the actual image data in Redis
+                    image_key = f"{image_type}_data:{order_number}"
+                    
+                    # Convert image to base64 for storage
+                    image_base64 = base64.b64encode(img_response.content).decode('utf-8')
+                    
+                    storage_data = {
+                        "order_number": order_number,
+                        "image_data": image_base64,
+                        "mime_type": "image/jpeg",
+                        "timestamp": datetime.now().isoformat(),
+                        "original_image_id": image_id
+                    }
+                    
+                    # Store permanently (or for a longer period)
+                    redis_client.setex(image_key, 2592000, json.dumps(storage_data))  # 30 days
+                    print(f"✅ Successfully stored {image_type} image for order {order_number}")
+                    
+                    return True
+        
+        print(f"❌ Failed to download {image_type} image: {image_id}")
+        return False
+        
+    except Exception as e:
+        print(f"❌ Error downloading {image_type} image {image_id}: {str(e)}")
+        return False
+
 
 def handle_check_existing_order(prompt, user_data, phone_id):
     try:
@@ -2477,6 +2545,46 @@ def send_whatsapp():
         print("Error sending message:", e)
         print(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/image/<order_number>/<image_type>')
+def serve_stored_image(order_number, image_type):
+    try:
+        print(f"🔍 Serving {image_type} image for order: {order_number}")
+        
+        # Validate image type
+        if image_type not in ['design', 'payment']:
+            return "Invalid image type", 400
+        
+        image_key = f"{image_type}_data:{order_number}"
+        stored_data = redis_client.get(image_key)
+        
+        if not stored_data:
+            print(f"❌ No stored image found for {image_key}")
+            return "Image not found", 404
+        
+        image_info = json.loads(stored_data)
+        image_data = image_info.get('image_data')
+        mime_type = image_info.get('mime_type', 'image/jpeg')
+        
+        if not image_data:
+            print(f"❌ No image data in stored record for {image_key}")
+            return "Image data missing", 404
+        
+        # Decode base64 image data
+        image_bytes = base64.b64decode(image_data)
+        print(f"✅ Serving stored {image_type} image for order {order_number}")
+        
+        return send_file(
+            BytesIO(image_bytes),
+            mimetype=mime_type,
+            as_attachment=False,
+            download_name=f"{image_type}_{order_number}.jpg"
+        )
+        
+    except Exception as e:
+        print(f"❌ Error serving stored image: {str(e)}")
+        return "Error loading image", 500
 
 
 @app.route('/api/proxy-image')
