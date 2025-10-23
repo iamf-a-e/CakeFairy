@@ -2478,5 +2478,42 @@ def send_whatsapp():
         print(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
+@app.route('/api/proxy-image')
+def proxy_image():
+    try:
+        image_id = request.args.get('image_id')
+        if not image_id:
+            return "Image ID required", 400
+        
+        # Use your WhatsApp token to get the image
+        wa_token = os.environ.get("WA_TOKEN")
+        
+        # First get the image URL from WhatsApp API
+        url = f"https://graph.facebook.com/v19.0/{image_id}"
+        headers = {'Authorization': f'Bearer {wa_token}'}
+        
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            image_data = response.json()
+            image_url = image_data.get('url')
+            
+            if image_url:
+                # Download and serve the image
+                img_response = requests.get(image_url, headers=headers, stream=True)
+                if img_response.status_code == 200:
+                    return send_file(
+                        img_response.raw,
+                        mimetype=img_response.headers.get('content-type', 'image/jpeg'),
+                        as_attachment=False
+                    )
+        
+        return "Image not found", 404
+        
+    except Exception as e:
+        logging.error(f"Error proxying image: {e}")
+        return "Error loading image", 500
+        
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
