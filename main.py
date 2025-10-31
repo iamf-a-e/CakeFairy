@@ -546,6 +546,7 @@ def handle_choose_payment(prompt, user_data, phone_id):
 *Message:* {user.message}
 *Special Requests:* {user.special_requests}
 *Payment:* {user.payment_method}
+*Collection:* {user.collection}
 
 *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
 
