@@ -1230,20 +1230,32 @@ def handle_get_order_info(prompt, user_data, phone_id):
 
         elif current_field == 'colors':
             user.colors = prompt
-            # After last step, move to payment
-            payment_options = [option.value for option in PaymentOptions]
-            send_list_message(
-                "Please choose a payment method:",
-                payment_options,
-                user_data['sender'],
-                phone_id
-            )
             update_user_state(user_data['sender'], {
-                'step': 'choose_payment',
-                'user': user.to_dict(),
-                'selected_item': user_data.get('selected_item')
-            })
-            return {'step': 'choose_payment', 'user': user.to_dict()}
+                    'step': 'get_collection_point',
+                    'user': user.to_dict(),
+                    'field': 'email',
+                    'selected_item': user_data.get('selected_item')
+                })
+                send_message("What is your collection point? Harare or Gweru.", user_data['sender'], phone_id)
+                return {'step': 'get_collection_point', 'user': user.to_dict(), 'field': 'collection'}
+            
+        elif current_field == 'collection':
+                user.collection = prompt
+                # After last step, move to payment
+                payment_options = [option.value for option in PaymentOptions]
+                send_list_message(
+                    "Please choose a payment method:",
+                    payment_options,
+                    user_data['sender'],
+                    phone_id
+                )
+                update_user_state(user_data['sender'], {
+                    'step': 'choose_payment',
+                    'user': user.to_dict(),
+                    'selected_item': user_data.get('selected_item')
+                })
+                return {'step': 'choose_payment', 'user': user.to_dict()}
+
 
     except Exception as e:
         logging.error(f"Error in handle_get_order_info: {e}")
@@ -1319,6 +1331,7 @@ Please visit www.cakefairy1.com for terms and conditions.
 *Flavor:* {user.flavor}
 *Due Date:* {user.due_date}
 *Due Time:* {user.due_time}
+*Collection Point:* {user.collection}
 *Colors:* {user.colors}
 *Message:* {user.message}
 *Special Requests:* {user.special_requests}
@@ -2361,6 +2374,7 @@ def handle_message(prompt, user_data, phone_id):
 *Name:* {user.name}
 *Flavor:* {user.flavor}
 *Theme:* {user.theme}
+*Due Date:* {user.due_date}
 *Due Time:* {user.due_time}
 *Colors:* {user.colors}
 *Message:* {user.message}
