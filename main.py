@@ -2382,20 +2382,20 @@ def handle_message(prompt, user_data, phone_id):
             order_summary = f"""
         🎂 *ORDER SUMMARY* 🎂
         
-        *Selected Item:* {user_data.get('selected_item', 'Custom Cake')}{price_line}
-        *Name:* {user.name}
-        *Flavor:* {user.flavor}
-        *Theme:* {user.theme}
-        *Due Date:* {user.due_date}
-        *Due Time:* {user.due_time}
-        *Colors:* {user.colors}
-        *Message:* {user.message}
-        *Special Requests:* {user.special_requests}
-        *Payment:* {user.payment_method}
+*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}{price_line}
+*Name:* {user.name}
+*Flavor:* {user.flavor}
+*Theme:* {user.theme}
+*Due Date:* {user.due_date}
+*Due Time:* {user.due_time}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Special Requests:* {user.special_requests}
+*Payment:* {user.payment_method}
         
-        *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
         
-        Please confirm if this order is correct.
+Please confirm if this order is correct.
             """
             
             send_button_message(
