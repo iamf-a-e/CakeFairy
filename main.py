@@ -1248,7 +1248,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
         elif current_field == 'colors':
             user.colors = prompt
             update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
+                'step': 'get_collection_point',
                 'user': user.to_dict(),
                 'field': 'collection',
                 'selected_item': user_data.get('selected_item')
@@ -2349,6 +2349,9 @@ def handle_message(prompt, user_data, phone_id):
             
         elif current_step == 'order_decision':
             return handle_order_decision(prompt, user_data, phone_id)
+
+        elif current_step == 'get_collection_point':
+            return handle_get_order_info(prompt, user_data, phone_id)
             
         elif current_step == 'get_order_info':
             return handle_get_order_info(prompt, user_data, phone_id)
