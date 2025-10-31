@@ -134,6 +134,7 @@ class User:
         self.referral_source = None
         self.callback_requested = False
         self.payment_method = None
+        self.collection = None
 
     def to_dict(self):
         return {
@@ -156,6 +157,7 @@ class User:
             "special_requests": self.special_requests,
             "referral_source": self.referral_source,
             "callback_requested": self.callback_requested,
+            "collection": self.collection,
             "payment_method": self.payment_method
         }
 
@@ -185,6 +187,7 @@ class User:
         user.referral_source = data.get("referral_source")
         user.callback_requested = data.get("callback_requested", False)
         user.payment_method = data.get("payment_method")
+        user.collection = data.get("collection")
         return user
 
 # Phone number normalization function
