@@ -1145,7 +1145,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
 
         elif current_field == 'collection':
             user.collection = prompt
-            # After collection point, move to payment
+            # After collection point, move to payment with proper user data
             payment_options = [option.value for option in PaymentOptions]
             send_list_message(
                 "Please choose a payment method:",
@@ -1155,11 +1155,14 @@ def handle_get_order_info(prompt, user_data, phone_id):
             )
             update_user_state(user_data['sender'], {
                 'step': 'choose_payment',
-                'user': user.to_dict(),
+                'user': user.to_dict(),  # Make sure user data is included
                 'selected_item': user_data.get('selected_item')
             })
-            return {'step': 'choose_payment', 'user': user.to_dict()}
-
+            return {
+                'step': 'choose_payment', 
+                'user': user.to_dict(),  # Include user data in return
+                'selected_item': user_data.get('selected_item')
+            }
         elif current_field == 'due_time':
             user.due_time = prompt
             update_user_state(user_data['sender'], {
@@ -2366,11 +2369,14 @@ def handle_message(prompt, user_data, phone_id):
             # Parse payment option
             selected_option = None
             for option in PaymentOptions:
-                if prompt_lower in option.value.lower():
+                if prompt.lower() in option.value.lower():
                     selected_option = option
                     break
             
-            user = User.from_dict(user_data['user'])
+            # Safely get user data
+            user_dict = user_data.get('user', {})
+            user = User.from_dict(user_dict) if user_dict else User(name="", phone=user_data['sender'])
+            
             if selected_option:
                 user.payment_method = selected_option.value
             else:
@@ -2385,28 +2391,28 @@ def handle_message(prompt, user_data, phone_id):
                 surcharge = 5 if any(c in colors_text for c in ['black', 'gold']) else 0
                 total_price = base_price + surcharge
                 price_line = f"\n*Price:* ${total_price}"
-
+        
             # Show final summary including payment
             order_summary = f"""
         🎂 *ORDER SUMMARY* 🎂
         
-*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}{price_line}
-*Name:* {user.name}
-*Flavor:* {user.flavor}
-*Theme:* {user.theme}
-*Due Date:* {user.due_date}
-*Due Time:* {user.due_time}
-*Colors:* {user.colors}
-*Message:* {user.message}
-*Special Requests:* {user.special_requests}
-*Payment:* {user.payment_method}
-*Collection:* {user.collection}
+        *Selected Item:* {user_data.get('selected_item', 'Custom Cake')}{price_line}
+        *Name:* {user.name}
+        *Flavor:* {user.flavor}
+        *Theme:* {user.theme}
+        *Due Date:* {user.due_date}
+        *Due Time:* {user.due_time}
+        *Colors:* {user.colors}
+        *Message:* {user.message}
+        *Special Requests:* {user.special_requests}
+        *Payment:* {user.payment_method}
+        *Collection:* {user.collection}
         
-*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+        *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
         
-Please confirm if this order is correct.
-        """
-        
+        Please confirm if this order is correct.
+            """
+            
             send_button_message(
                 order_summary,
                 [
