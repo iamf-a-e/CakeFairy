@@ -1040,7 +1040,6 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'theme',
                 'selected_item': user_data.get('selected_item')
             })
-            
 
             cake_type = (user_data.get('cake_type') or "").lower()
             # If a Fruit Cake was selected, skip flavor selection entirely
@@ -1064,7 +1063,6 @@ def handle_get_order_info(prompt, user_data, phone_id):
         
             send_message(flavor_msg, user_data['sender'], phone_id)
             return {'step': 'get_order_info', 'user': user.to_dict(), 'field': 'flavor'}
-
 
         elif current_field == 'flavor':
             # Determine expected number of flavors based on selected item
@@ -1143,42 +1141,6 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'due_time'
             }
 
-        elif current_field == 'collection':
-            user.collection = prompt
-            update_user_state(user_data['sender'], {
-                'step': 'get_order_info',
-                'user': user.to_dict(),
-                'field': 'collection',
-                'selected_item': user_data.get('selected_item')
-            })
-            
-            # Now show payment options
-            payment_options = [option.value for option in PaymentOptions]
-            recipient = user_data['sender']  # Use the sender directly
-            
-            try:
-                # Try to send list message first
-                ok = send_list_message("Please choose a payment method:", payment_options, recipient, phone_id)
-                if not ok:
-                    # Fallback to simple message with options
-                    fallback_msg = "Please choose a payment method:\n\n" + "\n".join(f"- {option}" for option in payment_options)
-                    send_message(fallback_msg, recipient, phone_id)
-            except Exception as inner_e:
-                logging.error(f"❌ Error showing payment options: {inner_e}")
-                # Ultimate fallback
-                fallback_msg = "Please choose a payment method:\n\n" + "\n".join(f"- {option}" for option in payment_options)
-                send_message(fallback_msg, recipient, phone_id)
-            
-            update_user_state(user_data['sender'], {
-                'step': 'choose_payment',
-                'user': user.to_dict(),
-                'selected_item': user_data.get('selected_item')
-            })
-            return {
-                'step': 'choose_payment', 
-                'user': user.to_dict()
-            }
-        
         elif current_field == 'due_time':
             user.due_time = prompt
             update_user_state(user_data['sender'], {
@@ -1267,9 +1229,9 @@ def handle_get_order_info(prompt, user_data, phone_id):
         elif current_field == 'colors':
             user.colors = prompt
             update_user_state(user_data['sender'], {
-                'step': 'get_order_info',  # Keep it in the same step handler
+                'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'collection',  # Next field to collect
+                'field': 'collection',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("What is your collection point? Harare or Bulawayo.", user_data['sender'], phone_id)
@@ -1278,13 +1240,41 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'user': user.to_dict(), 
                 'field': 'collection'
             }
+
+        elif current_field == 'collection':
+            user.collection = prompt
             
-       
+            # Now show payment options using buttons instead of list for better reliability
+            payment_msg = "Please choose your payment method:"
+            payment_buttons = [
+                {"id": "ecocash", "title": "💰 Ecocash"},
+                {"id": "innbucks", "title": "💳 InnBucks"}, 
+                {"id": "collection", "title": "🛒 Pay on Collection"}
+            ]
+            
+            # Try button message first
+            success = send_button_message(payment_msg, payment_buttons, user_data['sender'], phone_id)
+            
+            if not success:
+                # Fallback to simple text message
+                fallback_msg = f"{payment_msg}\n\n- Ecocash\n- InnBucks\n- Pay on Collection"
+                send_message(fallback_msg, user_data['sender'], phone_id)
+            
+            update_user_state(user_data['sender'], {
+                'step': 'choose_payment',
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item')
+            })
+            return {
+                'step': 'choose_payment', 
+                'user': user.to_dict()
+            }
+            
     except Exception as e:
         logging.error(f"Error in handle_get_order_info: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
-
+        
 
 def normalize_phone_number(phone):
     """Normalize phone number to handle different formats"""
