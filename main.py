@@ -2341,11 +2341,11 @@ def handle_message(prompt, user_data, phone_id):
             
         elif current_step == 'order_decision':
             return handle_order_decision(prompt, user_data, phone_id)
+           
+        elif current_step == 'get_order_info':
+            return handle_get_order_info(prompt, user_data, phone_id)
 
         elif current_step == 'get_collection_point':
-            return handle_get_order_info(prompt, user_data, phone_id)
-            
-        elif current_step == 'get_order_info':
             return handle_get_order_info(prompt, user_data, phone_id)
 
         elif current_step == 'design_request':
