@@ -501,6 +501,83 @@ def handle_welcome(prompt, user_data, phone_id):
     update_user_state(user_data['sender'], {'step': 'main_menu'})
     return {'step': 'main_menu'}
 
+
+def handle_choose_payment(prompt, user_data, phone_id):
+    try:
+        # Parse payment option
+        selected_option = None
+        prompt_lower = prompt.lower()
+        
+        for option in PaymentOptions:
+            if prompt_lower in option.value.lower() or prompt_lower in option.name.lower():
+                selected_option = option
+                break
+        
+        user = User.from_dict(user_data['user'])
+        if selected_option:
+            user.payment_method = selected_option.value
+        else:
+            user.payment_method = prompt
+    
+        # Compute price for Cake Fairy Cake with color surcharge
+        selected_item_text = (user_data.get('selected_item') or '').lower()
+        colors_text = (user.colors or '').lower()
+        price_line = ''
+        if 'cake fairy' in selected_item_text:
+            base_price = 20
+            surcharge = 5 if any(c in colors_text for c in ['black', 'gold']) else 0
+            total_price = base_price + surcharge
+            price_line = f"\n*Price:* ${total_price}"
+    
+        # Show final summary including payment
+        order_summary = f"""
+🎂 *ORDER SUMMARY* 🎂
+
+*Selected Item:* {user_data.get('selected_item', 'Custom Cake')}{price_line}
+*Name:* {user.name}
+*Flavor:* {user.flavor}
+*Theme:* {user.theme}
+*Due Date:* {user.due_date}
+*Due Time:* {user.due_time}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Special Requests:* {user.special_requests}
+*Payment:* {user.payment_method}
+
+*Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
+
+Please confirm if this order is correct.
+        """
+        
+        send_button_message(
+            order_summary,
+            [
+                {"id": "confirm_yes", "title": "✅ Yes, confirm order"},
+                {"id": "confirm_no", "title": "❌ No, edit order"}
+            ],
+            user_data['sender'],
+            phone_id
+        )
+        
+        # Update state with the latest user data including payment method
+        update_user_state(user_data['sender'], {
+            'step': 'confirm_order',
+            'user': user.to_dict(),
+            'selected_item': user_data.get('selected_item')
+        })
+        
+        return {
+            'step': 'confirm_order',
+            'user': user.to_dict(),
+            'selected_item': user_data.get('selected_item')
+        }
+        
+    except Exception as e:
+        logging.error(f"Error in handle_choose_payment: {e}")
+        send_message("An error occurred while processing payment. Please try again.", user_data['sender'], phone_id)
+        return {'step': 'main_menu'}
+        
+
 def handle_main_menu(prompt, user_data, phone_id):
     try:
         selected_option = None
@@ -1244,7 +1321,15 @@ def handle_get_order_info(prompt, user_data, phone_id):
         elif current_field == 'collection':
             user.collection = prompt
             
-            # Now show payment options using buttons instead of list for better reliability
+            # Update user data BEFORE moving to payment
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'collection',
+                'selected_item': user_data.get('selected_item')
+            })
+            
+            # Now show payment options
             payment_msg = "Please choose your payment method:"
             payment_buttons = [
                 {"id": "ecocash", "title": "💰 Ecocash"},
@@ -1252,19 +1337,14 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 {"id": "collection", "title": "🛒 Pay on Collection"}
             ]
             
-            # Try button message first
-            success = send_button_message(payment_msg, payment_buttons, user_data['sender'], phone_id)
-            
-            if not success:
-                # Fallback to simple text message
-                fallback_msg = f"{payment_msg}\n\n- Ecocash\n- InnBucks\n- Pay on Collection"
-                send_message(fallback_msg, user_data['sender'], phone_id)
+            send_button_message(payment_msg, payment_buttons, user_data['sender'], phone_id)
             
             update_user_state(user_data['sender'], {
-                'step': 'choose_payment',
+                'step': 'choose_payment',  # Changed from 'get_order_info'
                 'user': user.to_dict(),
                 'selected_item': user_data.get('selected_item')
             })
+            
             return {
                 'step': 'choose_payment', 
                 'user': user.to_dict()
@@ -2335,6 +2415,9 @@ def handle_message(prompt, user_data, phone_id):
             
         elif current_step == 'main_menu':
             return handle_main_menu(prompt, user_data, phone_id)
+            
+        elif current_step == 'choose_payment':
+            return handle_choose_payment(prompt, user_data, phone_id)
             
         elif current_step == 'cake_types_menu':
             return handle_cake_types_menu(prompt, user_data, phone_id)
