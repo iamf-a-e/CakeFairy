@@ -1144,30 +1144,40 @@ def handle_get_order_info(prompt, user_data, phone_id):
             }
 
         elif current_field == 'collection':
+            user.collection = prompt
+            update_user_state(user_data['sender'], {
+                'step': 'get_order_info',
+                'user': user.to_dict(),
+                'field': 'collection',
+                'selected_item': user_data.get('selected_item')
+            })
+            
+            # Now show payment options
+            payment_options = [option.value for option in PaymentOptions]
+            recipient = user_data['sender']  # Use the sender directly
+            
             try:
-                user.collection = prompt
-                payment_options = [option.value for option in PaymentOptions]
-                recipient = normalize_phone_number(user_data['sender'])  # ✅ ensure proper format
+                # Try to send list message first
                 ok = send_list_message("Please choose a payment method:", payment_options, recipient, phone_id)
                 if not ok:
-                    raise ValueError("send_list_message returned False")
-                update_user_state(recipient, {
-                    'step': 'choose_payment',
-                    'user': user.to_dict(),
-                    'selected_item': user_data.get('selected_item')
-                })
-                return {'step': 'choose_payment', 'user': user.to_dict()}
+                    # Fallback to simple message with options
+                    fallback_msg = "Please choose a payment method:\n\n" + "\n".join(f"- {option}" for option in payment_options)
+                    send_message(fallback_msg, recipient, phone_id)
             except Exception as inner_e:
-                logging.error(f"❌ Error in collection step: {type(inner_e).__name__} - {inner_e}")
-                send_message(
-                    "Sorry, there was a problem showing payment options. "
-                    "Please reply with your payment method: Ecocash, InnBucks, or On Collection.",
-                    user_data['sender'],
-                    phone_id
-                )
-                update_user_state(user_data['sender'], {'step': 'choose_payment_fallback'})
-                return {'step': 'choose_payment'}
-
+                logging.error(f"❌ Error showing payment options: {inner_e}")
+                # Ultimate fallback
+                fallback_msg = "Please choose a payment method:\n\n" + "\n".join(f"- {option}" for option in payment_options)
+                send_message(fallback_msg, recipient, phone_id)
+            
+            update_user_state(user_data['sender'], {
+                'step': 'choose_payment',
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item')
+            })
+            return {
+                'step': 'choose_payment', 
+                'user': user.to_dict()
+            }
         
         elif current_field == 'due_time':
             user.due_time = prompt
@@ -1257,13 +1267,17 @@ def handle_get_order_info(prompt, user_data, phone_id):
         elif current_field == 'colors':
             user.colors = prompt
             update_user_state(user_data['sender'], {
-                'step': 'get_collection_point',
+                'step': 'get_order_info',  # Keep it in the same step handler
                 'user': user.to_dict(),
-                'field': 'collection',
+                'field': 'collection',  # Next field to collect
                 'selected_item': user_data.get('selected_item')
             })
-            send_message("What is your collection point? Harare or Gweru.", user_data['sender'], phone_id)
-            return {'step': 'get_collection_point', 'user': user.to_dict(), 'field': 'collection'}
+            send_message("What is your collection point? Harare or Bulawayo.", user_data['sender'], phone_id)
+            return {
+                'step': 'get_order_info', 
+                'user': user.to_dict(), 
+                'field': 'collection'
+            }
             
        
     except Exception as e:
@@ -1271,6 +1285,26 @@ def handle_get_order_info(prompt, user_data, phone_id):
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
         return {'step': 'main_menu'}
 
+
+def normalize_phone_number(phone):
+    """Normalize phone number to handle different formats"""
+    if not phone:
+        return phone
+    
+    # Remove any non-digit characters except +
+    cleaned = ''.join(c for c in phone if c.isdigit() or c == '+')
+    
+    # Handle Zimbabwe numbers
+    if cleaned.startswith('+263'):
+        return cleaned
+    elif cleaned.startswith('263'):
+        return '+' + cleaned
+    elif cleaned.startswith('0'):
+        return '+263' + cleaned[1:]
+    else:
+        # If it doesn't match any pattern, return as is
+        return cleaned
+        
 
 def handle_confirm_order(prompt, user_data, phone_id):
     try:
