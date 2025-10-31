@@ -1144,25 +1144,21 @@ def handle_get_order_info(prompt, user_data, phone_id):
             }
 
         elif current_field == 'collection':
-            user.collection = prompt
-            # After collection point, move to payment with proper user data
-            payment_options = [option.value for option in PaymentOptions]
-            send_list_message(
-                "Please choose a payment method:",
-                payment_options,
-                user_data['sender'],
-                phone_id
-            )
-            update_user_state(user_data['sender'], {
-                'step': 'choose_payment',
-                'user': user.to_dict(),  # Make sure user data is included
-                'selected_item': user_data.get('selected_item')
-            })
-            return {
-                'step': 'choose_payment', 
-                'user': user.to_dict(),  # Include user data in return
-                'selected_item': user_data.get('selected_item')
-            }
+            try:
+                user.collection = prompt
+                payment_options = [option.value for option in PaymentOptions]
+                send_list_message("Please choose a payment method:", payment_options, user_data['sender'], phone_id)
+                update_user_state(user_data['sender'], {
+                    'step': 'choose_payment',
+                    'user': user.to_dict(),
+                    'selected_item': user_data.get('selected_item')
+                })
+                return {'step': 'choose_payment', 'user': user.to_dict()}
+            except Exception as inner_e:
+                logging.error(f"❌ Error in collection step: {type(inner_e).__name__} - {inner_e}")
+                raise
+
+        
         elif current_field == 'due_time':
             user.due_time = prompt
             update_user_state(user_data['sender'], {
