@@ -2570,9 +2570,9 @@ def send_whatsapp():
         recipient = data.get("to")
         message = data.get("message")
 
-        url = f"https://graph.facebook.com/v19.0/{PHONE_ID}/messages"
+        url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
         headers = {
-            "Authorization": f"Bearer {WA_TOKEN}",
+            "Authorization": f"Bearer {wa_token}",
             "Content-Type": "application/json"
         }
         payload = {
