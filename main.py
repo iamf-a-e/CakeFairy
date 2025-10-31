@@ -2358,14 +2358,11 @@ def handle_message(prompt, user_data, phone_id):
             # Parse payment option
             selected_option = None
             for option in PaymentOptions:
-                if prompt.lower() in option.value.lower():
+                if prompt_lower in option.value.lower():
                     selected_option = option
                     break
             
-            # Safely get user data
-            user_dict = user_data.get('user', {})
-            user = User.from_dict(user_dict) if user_dict else User(name="", phone=user_data['sender'])
-            
+            user = User.from_dict(user_data['user'])
             if selected_option:
                 user.payment_method = selected_option.value
             else:
@@ -2395,7 +2392,6 @@ def handle_message(prompt, user_data, phone_id):
         *Message:* {user.message}
         *Special Requests:* {user.special_requests}
         *Payment:* {user.payment_method}
-        *Collection:* {user.collection}
         
         *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
         
@@ -2421,7 +2417,8 @@ def handle_message(prompt, user_data, phone_id):
                 'user': user.to_dict(),
                 'selected_item': user_data.get('selected_item')
             }
-            
+
+    
         elif current_step == 'confirm_order':
             return handle_confirm_order(prompt, user_data, phone_id)
             
