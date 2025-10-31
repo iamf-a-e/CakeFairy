@@ -1143,6 +1143,23 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 'field': 'due_time'
             }
 
+        elif current_field == 'collection':
+            user.collection = prompt
+            # After collection point, move to payment
+            payment_options = [option.value for option in PaymentOptions]
+            send_list_message(
+                "Please choose a payment method:",
+                payment_options,
+                user_data['sender'],
+                phone_id
+            )
+            update_user_state(user_data['sender'], {
+                'step': 'choose_payment',
+                'user': user.to_dict(),
+                'selected_item': user_data.get('selected_item')
+            })
+            return {'step': 'choose_payment', 'user': user.to_dict()}
+
         elif current_field == 'due_time':
             user.due_time = prompt
             update_user_state(user_data['sender'], {
@@ -2380,6 +2397,7 @@ def handle_message(prompt, user_data, phone_id):
 *Message:* {user.message}
 *Special Requests:* {user.special_requests}
 *Payment:* {user.payment_method}
+*Collection:* {user.collection}
         
 *Note:* Dark colors (red, pink, black) may have a bitter/metallic aftertaste.
         
