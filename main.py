@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import logging
 import requests
@@ -1353,24 +1352,23 @@ Please visit www.cakefairy1.com for terms and conditions.
 
             # Notify agent/owner with all order details, including due date
             if owner_phone:
-                agent_notification = (
-    "📋 *NEW CAKE ORDER* 📋\n\n"
-    f"*Order Number:* {order_number}\n"
-    f"*Customer:* {user.contact_name or user.name}\n"
-    f"*Contact Number:* {user.contact_number or user.phone}\n"
-    f"*Email:* {user.email or 'N/A'}\n"
-    f"*Item:* {user_data.get('selected_item', 'Custom Cake')}\n"
-    f"*Theme:* {user.theme or 'N/A'}\n"
-    f"*Flavor:* {user.flavor or 'N/A'}\n"
-    f"*Due Date:* {user.due_date or 'N/A'}\n"
-    f"*Due Time:* {user.due_time or 'N/A'}\n"
-    f"*Collection Point:* {getattr(user, 'collection', 'N/A')}\n"
-    f"*Colors:* {user.colors or 'N/A'}\n"
-    f"*Message:* {user.message or 'N/A'}\n"
-    f"*Special Requests:* {user.special_requests or 'N/A'}\n"
-    f"*Payment:* {user.payment_method or 'N/A'}"
-)
+                agent_notification = f"""
+📋 *NEW CAKE ORDER* 📋
 
+*Order Number:* {order_number}
+*Customer:* {user.contact_name or user.name}
+*Contact Number:* {user.contact_number or user.phone}
+*Email:* {user.email}
+*Item:* {user_data.get('selected_item', 'Custom Cake')}
+*Theme:* {user.theme}
+*Flavor:* {user.flavor}
+*Due Date:* {user.due_date}
+*Due Time:* {user.due_time}
+*Collection Point:* {user.collection}
+*Colors:* {user.colors}
+*Message:* {user.message}
+*Special Requests:* {user.special_requests}
+*Payment:* {user.payment_method}
                 """
                 send_message(agent_notification, owner_phone, phone_id)
 
@@ -1457,7 +1455,7 @@ def handle_design_request(prompt, user_data, phone_id):
             if owner_phone:
                 # First send the informational message
                 design_msg = f"""
-*NEW CAKE DESIGN SUBMITTED*
+🎨 *NEW CAKE DESIGN SUBMITTED* 🎨
 
 *Order Number:* {user_data.get('order_number', 'N/A')}
 *Customer:* {user_data.get('customer_name', 'N/A')}
