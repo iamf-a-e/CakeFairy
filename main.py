@@ -1147,8 +1147,11 @@ def handle_get_order_info(prompt, user_data, phone_id):
             try:
                 user.collection = prompt
                 payment_options = [option.value for option in PaymentOptions]
-                send_list_message("Please choose a payment method:", payment_options, user_data['sender'], phone_id)
-                update_user_state(user_data['sender'], {
+                recipient = normalize_phone_number(user_data['sender'])  # ✅ ensure proper format
+                ok = send_list_message("Please choose a payment method:", payment_options, recipient, phone_id)
+                if not ok:
+                    raise ValueError("send_list_message returned False")
+                update_user_state(recipient, {
                     'step': 'choose_payment',
                     'user': user.to_dict(),
                     'selected_item': user_data.get('selected_item')
@@ -1156,7 +1159,14 @@ def handle_get_order_info(prompt, user_data, phone_id):
                 return {'step': 'choose_payment', 'user': user.to_dict()}
             except Exception as inner_e:
                 logging.error(f"❌ Error in collection step: {type(inner_e).__name__} - {inner_e}")
-                raise
+                send_message(
+                    "Sorry, there was a problem showing payment options. "
+                    "Please reply with your payment method: Ecocash, InnBucks, or On Collection.",
+                    user_data['sender'],
+                    phone_id
+                )
+                update_user_state(user_data['sender'], {'step': 'choose_payment_fallback'})
+                return {'step': 'choose_payment'}
 
         
         elif current_field == 'due_time':
@@ -1255,24 +1265,7 @@ def handle_get_order_info(prompt, user_data, phone_id):
             send_message("What is your collection point? Harare or Gweru.", user_data['sender'], phone_id)
             return {'step': 'get_collection_point', 'user': user.to_dict(), 'field': 'collection'}
             
-        elif current_field == 'collection':
-                user.collection = prompt
-                # After last step, move to payment
-                payment_options = [option.value for option in PaymentOptions]
-                send_list_message(
-                    "Please choose a payment method:",
-                    payment_options,
-                    user_data['sender'],
-                    phone_id
-                )
-                update_user_state(user_data['sender'], {
-                    'step': 'choose_payment',
-                    'user': user.to_dict(),
-                    'selected_item': user_data.get('selected_item')
-                })
-                return {'step': 'choose_payment', 'user': user.to_dict()}
-
-
+       
     except Exception as e:
         logging.error(f"Error in handle_get_order_info: {e}")
         send_message("An error occurred. Please try again.", user_data['sender'], phone_id)
