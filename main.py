@@ -1248,9 +1248,9 @@ def handle_get_order_info(prompt, user_data, phone_id):
         elif current_field == 'colors':
             user.colors = prompt
             update_user_state(user_data['sender'], {
-                'step': 'get_collection_point',
+                'step': 'get_order_info',
                 'user': user.to_dict(),
-                'field': 'email',
+                'field': 'collection',
                 'selected_item': user_data.get('selected_item')
             })
             send_message("What is your collection point? Harare or Gweru.", user_data['sender'], phone_id)
