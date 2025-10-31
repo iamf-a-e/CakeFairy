@@ -1457,7 +1457,7 @@ def handle_design_request(prompt, user_data, phone_id):
             if owner_phone:
                 # First send the informational message
                 design_msg = f"""
-🎨 *NEW CAKE DESIGN SUBMITTED* 🎨
+*NEW CAKE DESIGN SUBMITTED*
 
 *Order Number:* {user_data.get('order_number', 'N/A')}
 *Customer:* {user_data.get('customer_name', 'N/A')}
